@@ -73,7 +73,7 @@ func ParseVersion(tag string) (Version, error) {
 	return Version{Major: parts[0], Minor: parts[1], Patch: parts[2]}, nil
 }
 
-func getCurrentTag() (string, error) {
+func GetCurrentTag() (string, error) {
 	cmd := exec.Command("git", "describe", "--tags", "--abbrev=0", "--match", "v*.*.*")
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -84,6 +84,15 @@ func getCurrentTag() (string, error) {
 	}
 
 	return strings.TrimSpace(stdout.String()), nil
+}
+
+func AddVersionTag(v Version) error {
+	cmd := exec.Command("git", "tag", v.String())
+	_, err := cmd.Output()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func main() {
@@ -101,14 +110,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	currentTag, err := getCurrentTag()
+	currentTag, err := GetCurrentTag()
 	if err != nil {
 		fmt.Println("Could not get current tag.")
 		fmt.Println(err)
 		os.Exit(1)
 	}
-
-	fmt.Println(currentTag)
 
 	currentVersion, err := ParseVersion(currentTag)
 	if err != nil {
@@ -118,5 +125,11 @@ func main() {
 
 	nextVersion := currentVersion.Bump(opMode)
 
-	fmt.Printf("Would bump from %s to %s", currentVersion.String(), nextVersion.String())
+	fmt.Printf("Will bump from %s to %s", currentVersion.String(), nextVersion.String())
+
+	err = AddVersionTag(nextVersion)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }
