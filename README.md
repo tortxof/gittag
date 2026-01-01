@@ -1,4 +1,4 @@
-# gittag
+# 🏷️ gittag
 
 A simple CLI tool for bumping semantic version tags in Git repositories.
 
