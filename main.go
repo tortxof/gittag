@@ -98,22 +98,22 @@ func AddVersionTag(v Version) error {
 }
 
 func main() {
+	progName := filepath.Base(os.Args[0])
 	if len(os.Args) != 2 {
-		fmt.Printf("Usage: %s <%s|%s|%s|-v>\n", filepath.Base(os.Args[0]), Major, Minor, Patch)
+		fmt.Printf("Usage: %s <major|minor|patch>  Bump the version and create a new git tag\n", progName)
+		fmt.Printf("       %s version              Print version\n", progName)
 		os.Exit(1)
-	}
-
-	if os.Args[1] == "-v" || os.Args[1] == "--version" {
-		fmt.Println(version)
-		os.Exit(0)
 	}
 
 	var opMode string
 	switch os.Args[1] {
+	case "version":
+		fmt.Println(version)
+		os.Exit(0)
 	case Major, Minor, Patch:
 		opMode = os.Args[1]
 	default:
-		fmt.Printf("Argument must be '%s', '%s', or '%s'.\n", Major, Minor, Patch)
+		fmt.Printf("Unknown command: %s\n", os.Args[1])
 		os.Exit(1)
 	}
 
