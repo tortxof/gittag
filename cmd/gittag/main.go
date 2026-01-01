@@ -88,9 +88,9 @@ func GetCurrentTag() (string, error) {
 
 func AddVersionTag(v Version) error {
 	cmd := exec.Command("git", "tag", v.String())
-	_, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return err
+		return fmt.Errorf("git: %s", output)
 	}
 	return nil
 }
