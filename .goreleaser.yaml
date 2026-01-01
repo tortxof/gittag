@@ -9,8 +9,7 @@
 version: 2
 
 builds:
-  - main: ./cmd/gittag/
-    env:
+  - env:
       - CGO_ENABLED=0
     goos:
       - linux
