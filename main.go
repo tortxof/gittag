@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"os"
 	"os/exec"
@@ -97,28 +98,60 @@ func AddVersionTag(v Version) error {
 	return nil
 }
 
-func PrintUsage() {
-	progName := filepath.Base(os.Args[0])
-	fmt.Printf("Usage: %s <major|minor|patch>  Bump the version and create a new git tag\n", progName)
-	fmt.Printf("       %s version              Print version\n", progName)
+func init() {
+	flag.Usage = func() {
+		progName := filepath.Base(os.Args[0])
+		fmt.Fprintf(
+			flag.CommandLine.Output(),
+			"Usage: %s [flags] <major|minor|patch>  Bump the version and create a new git tag\n",
+			progName,
+		)
+		flag.PrintDefaults()
+	}
+}
+
+var printVersion bool
+
+func init() {
+	const (
+		defaultPrintVersion = false
+		usage               = "Print version info"
+	)
+	flag.BoolVar(&printVersion, "version", defaultPrintVersion, usage)
+	flag.BoolVar(&printVersion, "v", defaultPrintVersion, usage)
+}
+
+var dryRun bool
+
+func init() {
+	const (
+		defaultDryRun = false
+		usage         = "Dry run"
+	)
+	flag.BoolVar(&dryRun, "dry-run", defaultDryRun, usage)
+	flag.BoolVar(&dryRun, "n", defaultDryRun, usage)
 }
 
 func main() {
-	if len(os.Args) != 2 {
-		PrintUsage()
+	flag.Parse()
+
+	if printVersion {
+		fmt.Println(version)
+		os.Exit(0)
+	}
+
+	if flag.Arg(0) == "" {
+		flag.Usage()
 		os.Exit(1)
 	}
 
 	var opMode string
-	switch os.Args[1] {
-	case "version":
-		fmt.Println(version)
-		os.Exit(0)
+	switch flag.Arg(0) {
 	case Major, Minor, Patch:
-		opMode = os.Args[1]
+		opMode = flag.Arg(0)
 	default:
-		fmt.Printf("Unknown command: %s\n", os.Args[1])
-		PrintUsage()
+		fmt.Printf("Unknown command: %s\n", flag.Arg(0))
+		flag.Usage()
 		os.Exit(1)
 	}
 
@@ -138,6 +171,11 @@ func main() {
 	nextVersion := currentVersion.Bump(opMode)
 
 	fmt.Printf("Will bump from %s to %s\n", currentVersion.String(), nextVersion.String())
+
+	if dryRun {
+		fmt.Println("Dry run. Doing nothing.")
+		os.Exit(0)
+	}
 
 	err = AddVersionTag(nextVersion)
 	if err != nil {
