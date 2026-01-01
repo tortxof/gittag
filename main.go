@@ -97,11 +97,15 @@ func AddVersionTag(v Version) error {
 	return nil
 }
 
-func main() {
+func PrintUsage() {
 	progName := filepath.Base(os.Args[0])
+	fmt.Printf("Usage: %s <major|minor|patch>  Bump the version and create a new git tag\n", progName)
+	fmt.Printf("       %s version              Print version\n", progName)
+}
+
+func main() {
 	if len(os.Args) != 2 {
-		fmt.Printf("Usage: %s <major|minor|patch>  Bump the version and create a new git tag\n", progName)
-		fmt.Printf("       %s version              Print version\n", progName)
+		PrintUsage()
 		os.Exit(1)
 	}
 
@@ -114,6 +118,7 @@ func main() {
 		opMode = os.Args[1]
 	default:
 		fmt.Printf("Unknown command: %s\n", os.Args[1])
+		PrintUsage()
 		os.Exit(1)
 	}
 
