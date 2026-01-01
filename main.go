@@ -55,11 +55,11 @@ func (v Version) String() string {
 }
 
 func ParseVersion(tag string) (Version, error) {
-	re := regexp.MustCompile(`^v(\d+)\.(\d+)\.(\d+)$`)
+	re := regexp.MustCompile(`^v?(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`)
 	matches := re.FindStringSubmatch(tag)
 
 	if matches == nil {
-		return Version{}, fmt.Errorf("tag does not match v{%s}.{%s}.{%s} format", Major, Minor, Patch)
+		return Version{}, fmt.Errorf("tag does not match semver format")
 	}
 
 	var parts [3]int
