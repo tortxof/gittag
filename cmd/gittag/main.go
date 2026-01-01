@@ -97,7 +97,7 @@ func AddVersionTag(v Version) error {
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Printf("Usage: %s [%s|%s|%s]\n", filepath.Base(os.Args[0]), Major, Minor, Patch)
+		fmt.Printf("Usage: %s <%s|%s|%s>\n", filepath.Base(os.Args[0]), Major, Minor, Patch)
 		os.Exit(1)
 	}
 
