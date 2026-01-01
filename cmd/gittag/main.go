@@ -125,7 +125,7 @@ func main() {
 
 	nextVersion := currentVersion.Bump(opMode)
 
-	fmt.Printf("Will bump from %s to %s", currentVersion.String(), nextVersion.String())
+	fmt.Printf("Will bump from %s to %s\n", currentVersion.String(), nextVersion.String())
 
 	err = AddVersionTag(nextVersion)
 	if err != nil {
