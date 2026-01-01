@@ -170,7 +170,7 @@ func main() {
 
 	nextVersion := currentVersion.Bump(opMode)
 
-	fmt.Printf("Will bump from %s to %s\n", currentVersion.String(), nextVersion.String())
+	fmt.Printf("Will bump from %s to %s\n", currentVersion, nextVersion)
 
 	if dryRun {
 		fmt.Println("Dry run. Doing nothing.")
