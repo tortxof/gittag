@@ -8,6 +8,13 @@ A simple CLI tool for bumping semantic version tags in Git repositories.
 gittag <major|minor|patch>
 ```
 
+### Demo
+
+<img src="https://vhs.charm.sh/vhs-5uIaQgFL8hxg20ndDr6Qyp.gif" alt="Made with VHS">
+<a href="https://vhs.charm.sh">
+<img src="https://stuff.charm.sh/vhs/badge.svg">
+</a>
+
 ### Examples
 
 ```bash
