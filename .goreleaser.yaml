@@ -8,6 +8,10 @@
 
 version: 2
 
+before:
+  hooks:
+    - go test -v ./...
+
 builds:
   - env:
       - CGO_ENABLED=0
