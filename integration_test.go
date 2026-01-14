@@ -217,3 +217,125 @@ func TestIntegrationRelease(t *testing.T) {
 		t.Fatalf("expected v1.3.0, got %s", tag)
 	}
 }
+
+// Error case tests
+
+func TestIntegrationInitWithExistingTag(t *testing.T) {
+	dir := setupGitRepo(t, "v1.0.0")
+
+	output, err := runGittag(t, dir, "init")
+	if err == nil {
+		t.Fatal("expected gittag init to fail when tag exists")
+	}
+	if !strings.Contains(output, "Cannot init") {
+		t.Fatalf("expected error message about cannot init, got: %s", output)
+	}
+}
+
+func TestIntegrationMajorOnPrerelease(t *testing.T) {
+	dir := setupGitRepo(t, "v1.2.3-alpha.1")
+
+	output, err := runGittag(t, dir, "major")
+	if err == nil {
+		t.Fatal("expected gittag major to fail on pre-release version")
+	}
+	if !strings.Contains(output, "pre-release") {
+		t.Fatalf("expected error message about pre-release, got: %s", output)
+	}
+}
+
+func TestIntegrationMinorOnPrerelease(t *testing.T) {
+	dir := setupGitRepo(t, "v1.2.3-beta.1")
+
+	output, err := runGittag(t, dir, "minor")
+	if err == nil {
+		t.Fatal("expected gittag minor to fail on pre-release version")
+	}
+	if !strings.Contains(output, "pre-release") {
+		t.Fatalf("expected error message about pre-release, got: %s", output)
+	}
+}
+
+func TestIntegrationPatchOnPrerelease(t *testing.T) {
+	dir := setupGitRepo(t, "v1.2.3-rc.1")
+
+	output, err := runGittag(t, dir, "patch")
+	if err == nil {
+		t.Fatal("expected gittag patch to fail on pre-release version")
+	}
+	if !strings.Contains(output, "pre-release") {
+		t.Fatalf("expected error message about pre-release, got: %s", output)
+	}
+}
+
+func TestIntegrationPreMajorOnPrerelease(t *testing.T) {
+	dir := setupGitRepo(t, "v1.2.3-alpha.1")
+
+	output, err := runGittag(t, dir, "pre-major", "beta.1")
+	if err == nil {
+		t.Fatal("expected gittag pre-major to fail on pre-release version")
+	}
+	if !strings.Contains(output, "pre-release") {
+		t.Fatalf("expected error message about pre-release, got: %s", output)
+	}
+}
+
+func TestIntegrationPreMinorOnPrerelease(t *testing.T) {
+	dir := setupGitRepo(t, "v1.2.3-alpha.1")
+
+	output, err := runGittag(t, dir, "pre-minor", "beta.1")
+	if err == nil {
+		t.Fatal("expected gittag pre-minor to fail on pre-release version")
+	}
+	if !strings.Contains(output, "pre-release") {
+		t.Fatalf("expected error message about pre-release, got: %s", output)
+	}
+}
+
+func TestIntegrationPrePatchOnPrerelease(t *testing.T) {
+	dir := setupGitRepo(t, "v1.2.3-alpha.1")
+
+	output, err := runGittag(t, dir, "pre-patch", "beta.1")
+	if err == nil {
+		t.Fatal("expected gittag pre-patch to fail on pre-release version")
+	}
+	if !strings.Contains(output, "pre-release") {
+		t.Fatalf("expected error message about pre-release, got: %s", output)
+	}
+}
+
+func TestIntegrationPreOnNonPrerelease(t *testing.T) {
+	dir := setupGitRepo(t, "v1.2.3")
+
+	output, err := runGittag(t, dir, "pre", "alpha.1")
+	if err == nil {
+		t.Fatal("expected gittag pre to fail on non-pre-release version")
+	}
+	if !strings.Contains(output, "not pre-release") {
+		t.Fatalf("expected error message about not pre-release, got: %s", output)
+	}
+}
+
+func TestIntegrationReleaseOnNonPrerelease(t *testing.T) {
+	dir := setupGitRepo(t, "v1.2.3")
+
+	output, err := runGittag(t, dir, "release")
+	if err == nil {
+		t.Fatal("expected gittag release to fail on non-pre-release version")
+	}
+	if !strings.Contains(output, "not pre-release") {
+		t.Fatalf("expected error message about not pre-release, got: %s", output)
+	}
+}
+
+func TestIntegrationInvalidPrereleaseIdentifier(t *testing.T) {
+	dir := setupGitRepo(t, "v1.2.3")
+
+	output, err := runGittag(t, dir, "pre-minor", "01.invalid")
+	if err == nil {
+		t.Fatal("expected gittag pre-minor to fail with invalid prerelease identifier")
+	}
+	if !strings.Contains(output, "not valid") {
+		t.Fatalf("expected error message about invalid identifier, got: %s", output)
+	}
+}
