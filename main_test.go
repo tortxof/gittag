@@ -92,6 +92,11 @@ func TestVersionString(t *testing.T) {
 			v:    Version{Major: 1, Minor: 2, Patch: 3},
 			want: "v1.2.3",
 		},
+		{
+			name: "with prerelease",
+			v:    Version{Major: 1, Minor: 2, Patch: 3, Prerelease: "alpha.1"},
+			want: "v1.2.3-alpha.1",
+		},
 	}
 
 	for _, tt := range tests {
@@ -126,12 +131,12 @@ func TestParseVersion(t *testing.T) {
 		{
 			name:  "with prerelease build",
 			input: "7.8.9-beta.1+build.5",
-			want:  Version{Major: 7, Minor: 8, Patch: 9},
+			want:  Version{Major: 7, Minor: 8, Patch: 9, Prerelease: "beta.1"},
 		},
 		{
 			name:  "complex prerelease and metadata",
 			input: "0.0.1-rc.1.2+meta.data",
-			want:  Version{Major: 0, Minor: 0, Patch: 1},
+			want:  Version{Major: 0, Minor: 0, Patch: 1, Prerelease: "rc.1.2"},
 		},
 		{
 			name:    "invalid format",
