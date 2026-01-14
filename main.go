@@ -142,7 +142,21 @@ func init() {
 		progName := filepath.Base(os.Args[0])
 		fmt.Fprintf(
 			flag.CommandLine.Output(),
-			"Usage: %s [flags] <major|minor|patch>  Bump the version and create a new git tag\n",
+			`Usage: %s [flags] <command> [prerelease-id]
+
+Commands:
+  init                        Initialize with v0.0.0 tag (only if no version tag exists)
+  major                       Bump major version (v1.2.3 -> v2.0.0)
+  minor                       Bump minor version (v1.2.3 -> v1.3.0)
+  patch                       Bump patch version (v1.2.3 -> v1.2.4)
+  pre-major <prerelease-id>   Bump major and add prerelease (v1.2.3 -> v2.0.0-alpha)
+  pre-minor <prerelease-id>   Bump minor and add prerelease (v1.2.3 -> v1.3.0-alpha)
+  pre-patch <prerelease-id>   Bump patch and add prerelease (v1.2.3 -> v1.2.4-alpha)
+  pre <prerelease-id>         Update prerelease identifier (v2.0.0-alpha -> v2.0.0-beta)
+  release                     Remove prerelease to create release (v2.0.0-rc1 -> v2.0.0)
+
+Flags:
+`,
 			progName,
 		)
 		flag.PrintDefaults()
