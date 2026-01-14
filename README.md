@@ -89,6 +89,14 @@ go install github.com/tortxof/gittag@latest
 - You cannot run `major`/`minor`/`patch` on a pre-release version; use `release` first
 - Build metadata is parsed but not preserved
 
+## Development
+
+Run tests with `-count=1` to bypass Go's test cache. The integration tests build and run the binary as a subprocess, so Go's cache doesn't detect when `main.go` changes.
+
+```bash
+go test -v -count=1 ./...
+```
+
 ## Contributing
 
 Pull requests are welcome. This tool is intended to remain simple and should work with version tags that follow [semver](https://semver.org/).
