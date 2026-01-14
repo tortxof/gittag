@@ -5,8 +5,29 @@ A simple CLI tool for bumping semantic version tags in Git repositories.
 ## Usage
 
 ```bash
-gittag <major|minor|patch>
+gittag <command> [prerelease-id]
 ```
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `major` | Bump major version (v1.2.3 → v2.0.0) |
+| `minor` | Bump minor version (v1.2.3 → v1.3.0) |
+| `patch` | Bump patch version (v1.2.3 → v1.2.4) |
+| `pre-major <id>` | Bump major and add pre-release (v1.2.3 → v2.0.0-alpha.1) |
+| `pre-minor <id>` | Bump minor and add pre-release (v1.2.3 → v1.3.0-alpha.1) |
+| `pre-patch <id>` | Bump patch and add pre-release (v1.2.3 → v1.2.4-alpha.1) |
+| `pre <id>` | Update pre-release identifier (v1.3.0-alpha.1 → v1.3.0-alpha.2) |
+| `release` | Remove pre-release suffix (v1.3.0-alpha.2 → v1.3.0) |
+| `init` | Initialize repo with v0.0.0 tag |
+
+### Flags
+
+| Flag | Description |
+|------|-------------|
+| `-n`, `--dry-run` | Show what would happen without creating the tag |
+| `-v`, `--version` | Print version info |
 
 ### Demo
 
@@ -23,6 +44,12 @@ gittag <major|minor|patch>
 gittag patch   # Creates v1.2.4
 gittag minor   # Creates v1.3.0
 gittag major   # Creates v2.0.0
+
+# Pre-release workflow
+gittag pre-minor alpha.1   # v1.2.3 → v1.3.0-alpha.1
+gittag pre alpha.2         # v1.3.0-alpha.1 → v1.3.0-alpha.2
+gittag pre beta.1          # v1.3.0-alpha.2 → v1.3.0-beta.1
+gittag release             # v1.3.0-beta.1 → v1.3.0
 ```
 
 ## Installation
@@ -55,9 +82,12 @@ Download from the [releases page](https://github.com/tortxof/gittag/releases).
 go install github.com/tortxof/gittag@latest
 ```
 
-## Limitations
+## Notes
 
-This tool currently only works with simple version tags in the format `vMAJOR.MINOR.PATCH` (e.g., `v1.2.3`). Pre-release versions, build metadata, and other extended semver formats are not yet supported.
+- Tags follow the format `vMAJOR.MINOR.PATCH` or `vMAJOR.MINOR.PATCH-PRERELEASE`
+- Pre-release identifiers must be valid per [semver spec](https://semver.org/) (dot-separated alphanumeric identifiers)
+- You cannot run `major`/`minor`/`patch` on a pre-release version; use `release` first
+- Build metadata is parsed but not preserved
 
 ## Contributing
 
