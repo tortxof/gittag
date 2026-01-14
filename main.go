@@ -237,7 +237,7 @@ func main() {
 	case Major, Minor, Patch:
 		if currentVersion.IsPrerelease() {
 			fmt.Println(
-				"Cannot bump version. Current version is prerelease." +
+				"Cannot bump version. Current version is pre-release." +
 					" Do 'release' first.",
 			)
 			os.Exit(1)
@@ -246,9 +246,9 @@ func main() {
 	case PreMajor, PreMinor, PrePatch:
 		if currentVersion.IsPrerelease() {
 			fmt.Println(
-				"Cannot bump to prerelease version." +
-					" Current version is already prerelease." +
-					" Use 'pre' to update prerelease version.",
+				"Cannot bump to pre-release version." +
+					" Current version is already pre-release." +
+					" Use 'pre' to update pre-release version.",
 			)
 			os.Exit(1)
 		}
@@ -261,8 +261,8 @@ func main() {
 		}
 	case Pre:
 		if !currentVersion.IsPrerelease() {
-			fmt.Println("Cannot update prerelease version." +
-				" Current version is not prerelease.",
+			fmt.Println("Cannot update pre-release identifier." +
+				" Current version is not pre-release.",
 			)
 			os.Exit(1)
 		}
@@ -277,7 +277,7 @@ func main() {
 		if !currentVersion.IsPrerelease() {
 			fmt.Println(
 				"Cannot bump to release version." +
-					" Current version is not prerelease.",
+					" Current version is not pre-release.",
 			)
 			os.Exit(1)
 		}
