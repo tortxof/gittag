@@ -31,7 +31,7 @@ gittag <command> [prerelease-id]
 
 ### Demo
 
-<img src="https://vhs.charm.sh/vhs-5uIaQgFL8hxg20ndDr6Qyp.gif" alt="Made with VHS">
+<img src="https://vhs.charm.sh/vhs-1coTf7yL5qFPCR2ayeX6y0.gif" alt="Made with VHS">
 <a href="https://vhs.charm.sh">
 <img src="https://stuff.charm.sh/vhs/badge.svg">
 </a>
