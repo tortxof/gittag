@@ -82,6 +82,25 @@ Download from the [releases page](https://github.com/tortxof/gittag/releases).
 go install github.com/tortxof/gittag@latest
 ```
 
+## How It Works
+
+gittag uses Git commands to discover and create version tags:
+
+1. **Finding the current version**: Runs `git describe --tags --abbrev=0 --match "v*.*.*"` to find the most recent matching tag
+2. **Creating new tags**: Runs `git tag <version>` to create lightweight (non-annotated) tags
+
+### Limitations
+
+Because gittag uses `git describe` to find tags, there are some important behaviors to understand:
+
+- **Ancestry-based discovery**: `git describe` only finds tags that are ancestors of the current commit. If you checkout an older commit or a branch that diverged before a tag was created, gittag won't see that tag. It finds the most recent tag *reachable from HEAD*, not the most recent tag in the entire repository.
+
+- **Local tags only**: gittag only sees tags that exist locally. Tags on the remote that haven't been fetched won't be found. Run `git fetch --tags` to sync remote tags before using gittag.
+
+- **Pattern matching**: Tags must match `v*.*.*` to be discovered. Tags like `1.0.0` (no `v` prefix) or `v1.0` (only two components) will be ignored.
+
+- **No tag pushing**: gittag creates tags locally but does not push them. Run `git push --tags` after creating a tag to push it to the remote.
+
 ## Notes
 
 - Tags follow the format `vMAJOR.MINOR.PATCH` or `vMAJOR.MINOR.PATCH-PRERELEASE`
