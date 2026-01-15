@@ -74,11 +74,8 @@ func (v Version) ShouldCreateTag() bool {
 	if !v.IsPrerelease() {
 		return true
 	}
-	if len(v.Prerelease) > 0 {
-		lastChar := v.Prerelease[len(v.Prerelease)-1]
-		return lastChar >= '0' && lastChar <= '9'
-	}
-	return false
+	lastChar := v.Prerelease[len(v.Prerelease)-1]
+	return lastChar >= '0' && lastChar <= '9'
 }
 
 func ParseVersion(tag string) (Version, error) {
