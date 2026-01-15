@@ -305,16 +305,15 @@ func main() {
 				fmt.Println(err)
 				os.Exit(1)
 			}
-		} else {
-			hasTag, err := HasTag()
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-			if hasTag {
-				fmt.Println("Found a version tag. Cannot init.")
-				os.Exit(1)
-			}
+		}
+		hasTag, err := HasTag()
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		if hasTag {
+			fmt.Println("Found a version tag. Cannot init.")
+			os.Exit(1)
 		}
 		initialVersion := Version{}
 		if useFile {
@@ -324,7 +323,7 @@ func main() {
 				os.Exit(1)
 			}
 		}
-		err := AddVersionTag(initialVersion)
+		err = AddVersionTag(initialVersion)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
