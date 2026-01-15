@@ -70,6 +70,17 @@ func (v Version) IsPrerelease() bool {
 	return v.Prerelease != ""
 }
 
+func (v Version) ShouldCreateTag() bool {
+	if !v.IsPrerelease() {
+		return true
+	}
+	if len(v.Prerelease) > 0 {
+		lastChar := v.Prerelease[len(v.Prerelease)-1]
+		return lastChar >= '0' && lastChar <= '9'
+	}
+	return false
+}
+
 func ParseVersion(tag string) (Version, error) {
 	re := regexp.MustCompile(`^v?(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`)
 	matches := re.FindStringSubmatch(tag)
@@ -180,7 +191,10 @@ Commands:
 
 Version Source:
   By default, the current version is read from git tags. Use -f or -file to read
-  from a file instead. When using file mode, both the file and git tag are updated.
+  from a file instead. When using file mode, the file is always updated, but git
+  tags are only created for release versions and numbered prereleases (e.g.,
+  alpha.1, rc1). Unnumbered prereleases (e.g., alpha, beta) do not create git
+  tags.
 
 Flags:
 `,
@@ -374,6 +388,9 @@ func main() {
 	}
 
 	fmt.Printf("Will bump from %s to %s\n", currentVersion, nextVersion)
+	if useFile && !nextVersion.ShouldCreateTag() {
+		fmt.Println("No git tag will be created (prerelease without version number).")
+	}
 
 	if dryRun {
 		fmt.Println("Dry run. Doing nothing.")
@@ -386,10 +403,18 @@ func main() {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-	}
-	err = AddVersionTag(nextVersion)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		if nextVersion.ShouldCreateTag() {
+			err = AddVersionTag(nextVersion)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+		}
+	} else {
+		err = AddVersionTag(nextVersion)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
 	}
 }
