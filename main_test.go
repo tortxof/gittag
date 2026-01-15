@@ -350,3 +350,67 @@ func TestWriteVersionToFile_Overwrite(t *testing.T) {
 		t.Fatalf("WriteVersionToFile() wrote %q, want %q", string(content), want)
 	}
 }
+
+func TestShouldCreateTag(t *testing.T) {
+	tests := []struct {
+		name    string
+		version Version
+		want    bool
+	}{
+		{
+			name:    "release version",
+			version: Version{Major: 1, Minor: 0, Patch: 0},
+			want:    true,
+		},
+		{
+			name:    "unnumbered prerelease alpha",
+			version: Version{Major: 1, Minor: 0, Patch: 0, Prerelease: "alpha"},
+			want:    false,
+		},
+		{
+			name:    "unnumbered prerelease beta",
+			version: Version{Major: 1, Minor: 0, Patch: 0, Prerelease: "beta"},
+			want:    false,
+		},
+		{
+			name:    "unnumbered prerelease rc",
+			version: Version{Major: 1, Minor: 0, Patch: 0, Prerelease: "rc"},
+			want:    false,
+		},
+		{
+			name:    "numbered prerelease alpha.1",
+			version: Version{Major: 1, Minor: 0, Patch: 0, Prerelease: "alpha.1"},
+			want:    true,
+		},
+		{
+			name:    "numbered prerelease beta.2",
+			version: Version{Major: 1, Minor: 0, Patch: 0, Prerelease: "beta.2"},
+			want:    true,
+		},
+		{
+			name:    "numbered prerelease rc1",
+			version: Version{Major: 1, Minor: 0, Patch: 0, Prerelease: "rc1"},
+			want:    true,
+		},
+		{
+			name:    "numbered prerelease rc10",
+			version: Version{Major: 1, Minor: 0, Patch: 0, Prerelease: "rc10"},
+			want:    true,
+		},
+		{
+			name:    "zero version",
+			version: Version{Major: 0, Minor: 0, Patch: 0},
+			want:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.version.ShouldCreateTag()
+			if got != tt.want {
+				t.Fatalf("ShouldCreateTag() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
