@@ -121,7 +121,13 @@ func GetVersionFromFile(path string) (string, error) {
 
 func WriteVersionToFile(path string, v Version) error {
 	content := v.String()[1:] + "\n"
-	return os.WriteFile(path, []byte(content), 0644)
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = f.WriteString(content)
+	return err
 }
 
 func GetCurrentTag() (string, error) {
