@@ -90,6 +90,29 @@ func ParseVersion(tag string) (Version, error) {
 	return Version{Major: parts[0], Minor: parts[1], Patch: parts[2], Prerelease: matches[4]}, nil
 }
 
+func GetVersionFromFile(path string) (string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	if scanner.Scan() {
+		return strings.TrimSpace(scanner.Text()), nil
+	}
+	if err := scanner.Err(); err != nil {
+		return "", err
+	}
+
+	return "", fmt.Errorf("file is empty")
+}
+
+func WriteVersionToFile(path string, v Version) error {
+	content := v.String()[1:] + "\n"
+	return os.WriteFile(path, []byte(content), 0644)
+}
+
 func GetCurrentTag() (string, error) {
 	cmd := exec.Command("git", "describe", "--tags", "--abbrev=0", "--match", "v*.*.*")
 	var stdout, stderr bytes.Buffer
@@ -185,6 +208,16 @@ func init() {
 	flag.BoolVar(&dryRun, "n", defaultDryRun, usage)
 }
 
+const defaultVersionFile = "VERSION"
+
+var useFile bool
+var versionFile string
+
+func init() {
+	flag.BoolVar(&useFile, "f", false, fmt.Sprintf("Read version from file '%s'", defaultVersionFile))
+	flag.StringVar(&versionFile, "file", "", "Read version from specified file")
+}
+
 func main() {
 	flag.Parse()
 
@@ -196,6 +229,13 @@ func main() {
 	if flag.Arg(0) == "" {
 		flag.Usage()
 		os.Exit(1)
+	}
+
+	if versionFile != "" {
+		useFile = true
+	}
+	if useFile && versionFile == "" {
+		versionFile = defaultVersionFile
 	}
 
 	var opMode, prereleaseID string
@@ -216,16 +256,35 @@ func main() {
 	}
 
 	if opMode == Init {
-		hasTag, err := HasTag()
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+		if useFile {
+			_, err := os.Stat(versionFile)
+			if err == nil {
+				fmt.Println("Version file already exists. Cannot init.")
+				os.Exit(1)
+			} else if !os.IsNotExist(err) {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+		} else {
+			hasTag, err := HasTag()
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+			if hasTag {
+				fmt.Println("Found a version tag. Cannot init.")
+				os.Exit(1)
+			}
 		}
-		if hasTag {
-			fmt.Println("Found a version tag. Cannot init.")
-			os.Exit(1)
+		initialVersion := Version{}
+		if useFile {
+			err := WriteVersionToFile(versionFile, initialVersion)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
 		}
-		err = AddVersionTag(Version{})
+		err := AddVersionTag(initialVersion)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
@@ -233,11 +292,22 @@ func main() {
 		return
 	}
 
-	currentTag, err := GetCurrentTag()
-	if err != nil {
-		fmt.Println("Could not get current tag.")
-		fmt.Println(err)
-		os.Exit(1)
+	var currentTag string
+	var err error
+	if useFile {
+		currentTag, err = GetVersionFromFile(versionFile)
+		if err != nil {
+			fmt.Println("Could not read version file.")
+			fmt.Println(err)
+			os.Exit(1)
+		}
+	} else {
+		currentTag, err = GetCurrentTag()
+		if err != nil {
+			fmt.Println("Could not get current tag.")
+			fmt.Println(err)
+			os.Exit(1)
+		}
 	}
 
 	currentVersion, err := ParseVersion(currentTag)
@@ -306,6 +376,13 @@ func main() {
 		os.Exit(0)
 	}
 
+	if useFile {
+		err := WriteVersionToFile(versionFile, nextVersion)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+	}
 	err = AddVersionTag(nextVersion)
 	if err != nil {
 		fmt.Println(err)
