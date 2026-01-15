@@ -339,3 +339,311 @@ func TestIntegrationInvalidPrereleaseIdentifier(t *testing.T) {
 		t.Fatalf("expected error message about invalid identifier, got: %s", output)
 	}
 }
+
+// File-based version tests
+
+// setupGitRepoWithVersionFile creates a temp directory with an initialized git repo
+// and a VERSION file with the specified version (without "v" prefix)
+func setupGitRepoWithVersionFile(t *testing.T, version string) string {
+	t.Helper()
+
+	dir := t.TempDir()
+
+	// Initialize git repo
+	runGit(t, dir, "init")
+	runGit(t, dir, "config", "user.email", "test@test.com")
+	runGit(t, dir, "config", "user.name", "Test User")
+
+	// Create an initial commit (required for tags)
+	testFile := filepath.Join(dir, "test.txt")
+	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, dir, "add", ".")
+	runGit(t, dir, "commit", "-m", "initial commit")
+
+	// Create VERSION file if version specified
+	if version != "" {
+		versionFile := filepath.Join(dir, "VERSION")
+		if err := os.WriteFile(versionFile, []byte(version+"\n"), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		// Add a git tag matching the version
+		runGit(t, dir, "tag", "v"+version)
+
+		// Create another commit so new tags will be on a different commit
+		if err := os.WriteFile(testFile, []byte("test2"), 0644); err != nil {
+			t.Fatal(err)
+		}
+		runGit(t, dir, "add", ".")
+		runGit(t, dir, "commit", "-m", "second commit")
+	}
+
+	return dir
+}
+
+func getVersionFileContent(t *testing.T, dir string) string {
+	t.Helper()
+	content, err := os.ReadFile(filepath.Join(dir, "VERSION"))
+	if err != nil {
+		t.Fatalf("failed to read VERSION file: %v", err)
+	}
+	return strings.TrimSpace(string(content))
+}
+
+func getCustomVersionFileContent(t *testing.T, dir, filename string) string {
+	t.Helper()
+	content, err := os.ReadFile(filepath.Join(dir, filename))
+	if err != nil {
+		t.Fatalf("failed to read %s file: %v", filename, err)
+	}
+	return strings.TrimSpace(string(content))
+}
+
+func TestIntegrationFileInit(t *testing.T) {
+	dir := setupGitRepoWithVersionFile(t, "") // No VERSION file
+
+	_, err := runGittag(t, dir, "-f", "init")
+	if err != nil {
+		t.Fatalf("gittag -f init failed: %v", err)
+	}
+
+	// Check VERSION file was created
+	version := getVersionFileContent(t, dir)
+	if version != "0.0.0" {
+		t.Fatalf("expected VERSION file to contain 0.0.0, got %s", version)
+	}
+
+	// Check git tag was also created
+	tag := getLatestTag(t, dir)
+	if tag != "v0.0.0" {
+		t.Fatalf("expected v0.0.0 tag, got %s", tag)
+	}
+}
+
+func TestIntegrationFileInitCustomFile(t *testing.T) {
+	dir := setupGitRepoWithVersionFile(t, "") // No VERSION file
+
+	_, err := runGittag(t, dir, "-file", "MYVERSION", "init")
+	if err != nil {
+		t.Fatalf("gittag -file MYVERSION init failed: %v", err)
+	}
+
+	// Check custom file was created
+	version := getCustomVersionFileContent(t, dir, "MYVERSION")
+	if version != "0.0.0" {
+		t.Fatalf("expected MYVERSION file to contain 0.0.0, got %s", version)
+	}
+
+	// Check git tag was also created
+	tag := getLatestTag(t, dir)
+	if tag != "v0.0.0" {
+		t.Fatalf("expected v0.0.0 tag, got %s", tag)
+	}
+}
+
+func TestIntegrationFileInitWithExistingFile(t *testing.T) {
+	dir := setupGitRepoWithVersionFile(t, "1.0.0") // VERSION file exists
+
+	output, err := runGittag(t, dir, "-f", "init")
+	if err == nil {
+		t.Fatal("expected gittag -f init to fail when VERSION file exists")
+	}
+	if !strings.Contains(output, "already exists") {
+		t.Fatalf("expected error message about file already exists, got: %s", output)
+	}
+}
+
+func TestIntegrationFilePatch(t *testing.T) {
+	dir := setupGitRepoWithVersionFile(t, "1.2.3")
+
+	_, err := runGittag(t, dir, "-f", "patch")
+	if err != nil {
+		t.Fatalf("gittag -f patch failed: %v", err)
+	}
+
+	// Check VERSION file was updated
+	version := getVersionFileContent(t, dir)
+	if version != "1.2.4" {
+		t.Fatalf("expected VERSION file to contain 1.2.4, got %s", version)
+	}
+
+	// Check git tag was also created
+	tag := getLatestTag(t, dir)
+	if tag != "v1.2.4" {
+		t.Fatalf("expected v1.2.4 tag, got %s", tag)
+	}
+}
+
+func TestIntegrationFileMinor(t *testing.T) {
+	dir := setupGitRepoWithVersionFile(t, "1.2.3")
+
+	_, err := runGittag(t, dir, "-f", "minor")
+	if err != nil {
+		t.Fatalf("gittag -f minor failed: %v", err)
+	}
+
+	// Check VERSION file was updated
+	version := getVersionFileContent(t, dir)
+	if version != "1.3.0" {
+		t.Fatalf("expected VERSION file to contain 1.3.0, got %s", version)
+	}
+
+	// Check git tag was also created
+	tag := getLatestTag(t, dir)
+	if tag != "v1.3.0" {
+		t.Fatalf("expected v1.3.0 tag, got %s", tag)
+	}
+}
+
+func TestIntegrationFileMajor(t *testing.T) {
+	dir := setupGitRepoWithVersionFile(t, "1.2.3")
+
+	_, err := runGittag(t, dir, "-f", "major")
+	if err != nil {
+		t.Fatalf("gittag -f major failed: %v", err)
+	}
+
+	// Check VERSION file was updated
+	version := getVersionFileContent(t, dir)
+	if version != "2.0.0" {
+		t.Fatalf("expected VERSION file to contain 2.0.0, got %s", version)
+	}
+
+	// Check git tag was also created
+	tag := getLatestTag(t, dir)
+	if tag != "v2.0.0" {
+		t.Fatalf("expected v2.0.0 tag, got %s", tag)
+	}
+}
+
+func TestIntegrationFileCustomPath(t *testing.T) {
+	dir := setupGitRepoWithVersionFile(t, "")
+
+	// Create a custom version file
+	customFile := filepath.Join(dir, "my-version.txt")
+	if err := os.WriteFile(customFile, []byte("2.0.0\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Also need a matching git tag
+	runGit(t, dir, "tag", "v2.0.0")
+
+	// Create another commit
+	testFile := filepath.Join(dir, "test.txt")
+	if err := os.WriteFile(testFile, []byte("test3"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, dir, "add", ".")
+	runGit(t, dir, "commit", "-m", "third commit")
+
+	_, err := runGittag(t, dir, "-file", "my-version.txt", "patch")
+	if err != nil {
+		t.Fatalf("gittag -file my-version.txt patch failed: %v", err)
+	}
+
+	// Check custom file was updated
+	version := getCustomVersionFileContent(t, dir, "my-version.txt")
+	if version != "2.0.1" {
+		t.Fatalf("expected my-version.txt to contain 2.0.1, got %s", version)
+	}
+
+	// Check git tag was created
+	tag := getLatestTag(t, dir)
+	if tag != "v2.0.1" {
+		t.Fatalf("expected v2.0.1 tag, got %s", tag)
+	}
+}
+
+func TestIntegrationFileDryRun(t *testing.T) {
+	dir := setupGitRepoWithVersionFile(t, "1.2.3")
+
+	output, err := runGittag(t, dir, "-f", "-n", "patch")
+	if err != nil {
+		t.Fatalf("gittag -f -n patch failed: %v", err)
+	}
+
+	// Check output shows what would happen
+	if !strings.Contains(output, "v1.2.3") || !strings.Contains(output, "v1.2.4") {
+		t.Fatalf("expected dry-run output to show version change, got: %s", output)
+	}
+
+	// Check VERSION file was NOT updated
+	version := getVersionFileContent(t, dir)
+	if version != "1.2.3" {
+		t.Fatalf("expected VERSION file to remain 1.2.3 after dry-run, got %s", version)
+	}
+
+	// Check no new tag was created
+	tag := getLatestTag(t, dir)
+	if tag != "v1.2.3" {
+		t.Fatalf("expected tag to remain v1.2.3 after dry-run, got %s", tag)
+	}
+}
+
+func TestIntegrationFilePreMinor(t *testing.T) {
+	dir := setupGitRepoWithVersionFile(t, "1.2.3")
+
+	_, err := runGittag(t, dir, "-f", "pre-minor", "alpha.1")
+	if err != nil {
+		t.Fatalf("gittag -f pre-minor failed: %v", err)
+	}
+
+	// Check VERSION file was updated with prerelease
+	version := getVersionFileContent(t, dir)
+	if version != "1.3.0-alpha.1" {
+		t.Fatalf("expected VERSION file to contain 1.3.0-alpha.1, got %s", version)
+	}
+
+	// Check git tag was created
+	tag := getLatestTag(t, dir)
+	if tag != "v1.3.0-alpha.1" {
+		t.Fatalf("expected v1.3.0-alpha.1 tag, got %s", tag)
+	}
+}
+
+func TestIntegrationFileRelease(t *testing.T) {
+	dir := setupGitRepoWithVersionFile(t, "1.3.0-beta.2")
+
+	// Need a matching git tag for the prerelease
+	runGit(t, dir, "tag", "-d", "v1.3.0-beta.2") // Remove auto-created tag first
+	runGit(t, dir, "tag", "v1.3.0-beta.2")
+
+	// Create another commit
+	testFile := filepath.Join(dir, "test.txt")
+	if err := os.WriteFile(testFile, []byte("test3"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, dir, "add", ".")
+	runGit(t, dir, "commit", "-m", "third commit")
+
+	_, err := runGittag(t, dir, "-f", "release")
+	if err != nil {
+		t.Fatalf("gittag -f release failed: %v", err)
+	}
+
+	// Check VERSION file was updated
+	version := getVersionFileContent(t, dir)
+	if version != "1.3.0" {
+		t.Fatalf("expected VERSION file to contain 1.3.0, got %s", version)
+	}
+
+	// Check git tag was created
+	tag := getLatestTag(t, dir)
+	if tag != "v1.3.0" {
+		t.Fatalf("expected v1.3.0 tag, got %s", tag)
+	}
+}
+
+func TestIntegrationFileMissingFile(t *testing.T) {
+	dir := setupGitRepoWithVersionFile(t, "") // No VERSION file
+
+	output, err := runGittag(t, dir, "-f", "patch")
+	if err == nil {
+		t.Fatal("expected gittag -f patch to fail when VERSION file doesn't exist")
+	}
+	if !strings.Contains(output, "Could not read version file") {
+		t.Fatalf("expected error about reading version file, got: %s", output)
+	}
+}
