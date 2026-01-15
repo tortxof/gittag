@@ -840,3 +840,34 @@ func TestIntegrationFileWorkflow(t *testing.T) {
 		t.Fatalf("expected v3.5.0 tag, got %s", tag)
 	}
 }
+
+func TestIntegrationFileInvalidContent(t *testing.T) {
+	dir := t.TempDir()
+
+	// Initialize git repo
+	runGit(t, dir, "init")
+	runGit(t, dir, "config", "user.email", "test@test.com")
+	runGit(t, dir, "config", "user.name", "Test User")
+
+	// Create an initial commit
+	testFile := filepath.Join(dir, "test.txt")
+	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, dir, "add", ".")
+	runGit(t, dir, "commit", "-m", "initial commit")
+
+	// Create VERSION file with invalid content
+	versionFile := filepath.Join(dir, "VERSION")
+	if err := os.WriteFile(versionFile, []byte("not-a-version\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	output, err := runGittag(t, dir, "-f", "patch")
+	if err == nil {
+		t.Fatal("expected gittag to fail with invalid VERSION file content")
+	}
+	if !strings.Contains(output, "semver") {
+		t.Fatalf("expected error message about semver format, got: %s", output)
+	}
+}
