@@ -406,18 +406,14 @@ func main() {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-		if nextVersion.ShouldCreateTag() {
-			err = AddVersionTag(nextVersion)
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
+		if !nextVersion.ShouldCreateTag() {
+			return
 		}
-	} else {
-		err = AddVersionTag(nextVersion)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
+	}
+
+	err = AddVersionTag(nextVersion)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
 }
