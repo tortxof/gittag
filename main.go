@@ -79,7 +79,7 @@ func (v Version) ClearPrerelease() Version {
 }
 
 func (v Version) String() string {
-	if v.Prerelease != "" {
+	if v.IsPrerelease() {
 		return fmt.Sprintf("v%d.%d.%d-%s", v.Major, v.Minor, v.Patch, v.Prerelease)
 	}
 	return fmt.Sprintf("v%d.%d.%d", v.Major, v.Minor, v.Patch)
