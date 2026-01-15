@@ -27,6 +27,8 @@ gittag <command> [prerelease-id]
 | Flag | Description |
 |------|-------------|
 | `-n`, `--dry-run` | Show what would happen without creating the tag |
+| `-f` | Read version from `VERSION` file instead of git tags |
+| `-file <path>` | Read version from specified file |
 | `-v`, `--version` | Print version info |
 
 ### Demo
@@ -50,6 +52,29 @@ gittag pre-minor alpha.1   # v1.2.3 → v1.3.0-alpha.1
 gittag pre alpha.2         # v1.3.0-alpha.1 → v1.3.0-alpha.2
 gittag pre beta.1          # v1.3.0-alpha.2 → v1.3.0-beta.1
 gittag release             # v1.3.0-beta.1 → v1.3.0
+```
+
+### File-Based Version Tracking
+
+Use `-f` or `-file` to track the version in a file instead of relying solely on git tags. This is useful when you want a `VERSION` file in your repository that other tools can read.
+
+```bash
+gittag -f init             # Creates VERSION file with 0.0.0 and v0.0.0 tag
+gittag -f patch            # Updates VERSION file and creates git tag
+gittag -file VERSION.txt patch  # Use a custom filename
+```
+
+**Conditional tagging:** In file mode, git tags are only created for release versions and numbered prereleases. Unnumbered prereleases update only the file, not git tags. This allows prereleases like `alpha` or `beta` to represent a development phase spanning multiple commits, while numbered prereleases like `alpha.1` or `rc1` mark specific snapshots.
+
+```bash
+# Starting from VERSION containing 3.4.0
+
+gittag -f pre-minor alpha  # VERSION → 3.5.0-alpha (no git tag)
+gittag -f pre alpha.1      # VERSION → 3.5.0-alpha.1 (creates v3.5.0-alpha.1 tag)
+gittag -f pre beta         # VERSION → 3.5.0-beta (no git tag)
+gittag -f pre beta.1       # VERSION → 3.5.0-beta.1 (creates v3.5.0-beta.1 tag)
+gittag -f pre rc1          # VERSION → 3.5.0-rc1 (creates v3.5.0-rc1 tag)
+gittag -f release          # VERSION → 3.5.0 (creates v3.5.0 tag)
 ```
 
 ## Installation

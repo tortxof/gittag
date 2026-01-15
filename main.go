@@ -59,8 +59,27 @@ func (v Version) Bump(level string) Version {
 	}
 }
 
+func (v Version) SetPrerelease(prereleaseID string) (Version, error) {
+	return ParseVersion(
+		Version{
+			Major:      v.Major,
+			Minor:      v.Minor,
+			Patch:      v.Patch,
+			Prerelease: prereleaseID,
+		}.String(),
+	)
+}
+
+func (v Version) ClearPrerelease() Version {
+	return Version{
+		Major: v.Major,
+		Minor: v.Minor,
+		Patch: v.Patch,
+	}
+}
+
 func (v Version) String() string {
-	if v.Prerelease != "" {
+	if v.IsPrerelease() {
 		return fmt.Sprintf("v%d.%d.%d-%s", v.Major, v.Minor, v.Patch, v.Prerelease)
 	}
 	return fmt.Sprintf("v%d.%d.%d", v.Major, v.Minor, v.Patch)
@@ -68,6 +87,14 @@ func (v Version) String() string {
 
 func (v Version) IsPrerelease() bool {
 	return v.Prerelease != ""
+}
+
+func (v Version) ShouldCreateTag() bool {
+	if !v.IsPrerelease() {
+		return true
+	}
+	lastChar := v.Prerelease[len(v.Prerelease)-1]
+	return lastChar >= '0' && lastChar <= '9'
 }
 
 func ParseVersion(tag string) (Version, error) {
@@ -88,6 +115,35 @@ func ParseVersion(tag string) (Version, error) {
 	}
 
 	return Version{Major: parts[0], Minor: parts[1], Patch: parts[2], Prerelease: matches[4]}, nil
+}
+
+func GetVersionFromFile(path string) (string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	if scanner.Scan() {
+		return strings.TrimSpace(scanner.Text()), nil
+	}
+	if err := scanner.Err(); err != nil {
+		return "", err
+	}
+
+	return "", fmt.Errorf("file is empty")
+}
+
+func WriteVersionToFile(path string, v Version) error {
+	content := v.String()[1:] + "\n"
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = f.WriteString(content)
+	return err
 }
 
 func GetCurrentTag() (string, error) {
@@ -155,6 +211,13 @@ Commands:
   pre <prerelease-id>         Update prerelease identifier (v2.0.0-alpha -> v2.0.0-beta)
   release                     Remove prerelease to create release (v2.0.0-rc1 -> v2.0.0)
 
+Version Source:
+  By default, the current version is read from git tags. Use -f or -file to read
+  from a file instead. When using file mode, the file is always updated, but git
+  tags are only created for release versions and numbered prereleases (e.g.,
+  alpha.1, rc1). Unnumbered prereleases (e.g., alpha, beta) do not create git
+  tags.
+
 Flags:
 `,
 			progName,
@@ -185,6 +248,16 @@ func init() {
 	flag.BoolVar(&dryRun, "n", defaultDryRun, usage)
 }
 
+const defaultVersionFile = "VERSION"
+
+var useFile bool
+var versionFile string
+
+func init() {
+	flag.BoolVar(&useFile, "f", false, fmt.Sprintf("Read version from file '%s'", defaultVersionFile))
+	flag.StringVar(&versionFile, "file", "", "Read version from specified file")
+}
+
 func main() {
 	flag.Parse()
 
@@ -196,6 +269,13 @@ func main() {
 	if flag.Arg(0) == "" {
 		flag.Usage()
 		os.Exit(1)
+	}
+
+	if versionFile != "" {
+		useFile = true
+	}
+	if useFile && versionFile == "" {
+		versionFile = defaultVersionFile
 	}
 
 	var opMode, prereleaseID string
@@ -216,6 +296,16 @@ func main() {
 	}
 
 	if opMode == Init {
+		if useFile {
+			_, err := os.Stat(versionFile)
+			if err == nil {
+				fmt.Println("Version file already exists. Cannot init.")
+				os.Exit(1)
+			} else if !os.IsNotExist(err) {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+		}
 		hasTag, err := HasTag()
 		if err != nil {
 			fmt.Println(err)
@@ -225,7 +315,15 @@ func main() {
 			fmt.Println("Found a version tag. Cannot init.")
 			os.Exit(1)
 		}
-		err = AddVersionTag(Version{})
+		initialVersion := Version{}
+		if useFile {
+			err := WriteVersionToFile(versionFile, initialVersion)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+		}
+		err = AddVersionTag(initialVersion)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
@@ -233,11 +331,22 @@ func main() {
 		return
 	}
 
-	currentTag, err := GetCurrentTag()
-	if err != nil {
-		fmt.Println("Could not get current tag.")
-		fmt.Println(err)
-		os.Exit(1)
+	var currentTag string
+	var err error
+	if useFile {
+		currentTag, err = GetVersionFromFile(versionFile)
+		if err != nil {
+			fmt.Println("Could not read version file.")
+			fmt.Println(err)
+			os.Exit(1)
+		}
+	} else {
+		currentTag, err = GetCurrentTag()
+		if err != nil {
+			fmt.Println("Could not get current tag.")
+			fmt.Println(err)
+			os.Exit(1)
+		}
 	}
 
 	currentVersion, err := ParseVersion(currentTag)
@@ -266,9 +375,7 @@ func main() {
 			)
 			os.Exit(1)
 		}
-		nextVersion = currentVersion.Bump(opMode)
-		nextVersion.Prerelease = prereleaseID
-		nextVersion, err = ParseVersion(nextVersion.String())
+		nextVersion, err = currentVersion.Bump(opMode).SetPrerelease(prereleaseID)
 		if err != nil {
 			fmt.Println("Pre-release identifier is not valid per semver spec.")
 			os.Exit(1)
@@ -280,9 +387,7 @@ func main() {
 			)
 			os.Exit(1)
 		}
-		nextVersion = currentVersion
-		nextVersion.Prerelease = prereleaseID
-		nextVersion, err = ParseVersion(nextVersion.String())
+		nextVersion, err = currentVersion.SetPrerelease(prereleaseID)
 		if err != nil {
 			fmt.Println("Pre-release identifier is not valid per semver spec.")
 			os.Exit(1)
@@ -295,15 +400,28 @@ func main() {
 			)
 			os.Exit(1)
 		}
-		nextVersion = currentVersion
-		nextVersion.Prerelease = ""
+		nextVersion = currentVersion.ClearPrerelease()
 	}
 
 	fmt.Printf("Will bump from %s to %s\n", currentVersion, nextVersion)
+	if useFile && !nextVersion.ShouldCreateTag() {
+		fmt.Println("No git tag will be created (prerelease without version number).")
+	}
 
 	if dryRun {
 		fmt.Println("Dry run. Doing nothing.")
 		os.Exit(0)
+	}
+
+	if useFile {
+		err := WriteVersionToFile(versionFile, nextVersion)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		if !nextVersion.ShouldCreateTag() {
+			return
+		}
 	}
 
 	err = AddVersionTag(nextVersion)

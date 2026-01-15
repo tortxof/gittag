@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -185,6 +187,229 @@ func TestParseVersion(t *testing.T) {
 			}
 			if got != tt.want {
 				t.Fatalf("ParseVersion(%q) = %+v, want %+v", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGetVersionFromFile(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		want    string
+		wantErr bool
+	}{
+		{
+			name:    "simple version",
+			content: "1.2.3\n",
+			want:    "1.2.3",
+		},
+		{
+			name:    "version with leading v",
+			content: "v1.2.3\n",
+			want:    "v1.2.3",
+		},
+		{
+			name:    "version without trailing newline",
+			content: "1.2.3",
+			want:    "1.2.3",
+		},
+		{
+			name:    "version with whitespace",
+			content: "  1.2.3  \n",
+			want:    "1.2.3",
+		},
+		{
+			name:    "version with extra lines",
+			content: "1.2.3\nextra\nlines\n",
+			want:    "1.2.3",
+		},
+		{
+			name:    "empty file",
+			content: "",
+			wantErr: true,
+		},
+		{
+			name:    "only whitespace",
+			content: "   \n",
+			want:    "",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			path := filepath.Join(tmpDir, "VERSION")
+			err := os.WriteFile(path, []byte(tt.content), 0644)
+			if err != nil {
+				t.Fatalf("failed to write test file: %v", err)
+			}
+
+			got, err := GetVersionFromFile(path)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("GetVersionFromFile() expected error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("GetVersionFromFile() unexpected error: %v", err)
+			}
+			if got != tt.want {
+				t.Fatalf("GetVersionFromFile() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGetVersionFromFile_NotFound(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "NONEXISTENT")
+	_, err := GetVersionFromFile(path)
+	if err == nil {
+		t.Fatalf("GetVersionFromFile() expected error for nonexistent file")
+	}
+}
+
+func TestWriteVersionToFile(t *testing.T) {
+	tests := []struct {
+		name    string
+		version Version
+		want    string
+	}{
+		{
+			name:    "simple version",
+			version: Version{Major: 1, Minor: 2, Patch: 3},
+			want:    "1.2.3\n",
+		},
+		{
+			name:    "zero version",
+			version: Version{Major: 0, Minor: 0, Patch: 0},
+			want:    "0.0.0\n",
+		},
+		{
+			name:    "large numbers",
+			version: Version{Major: 10, Minor: 20, Patch: 30},
+			want:    "10.20.30\n",
+		},
+		{
+			name:    "prerelease version",
+			version: Version{Major: 1, Minor: 0, Patch: 0, Prerelease: "alpha.1"},
+			want:    "1.0.0-alpha.1\n",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			path := filepath.Join(tmpDir, "VERSION")
+
+			err := WriteVersionToFile(path, tt.version)
+			if err != nil {
+				t.Fatalf("WriteVersionToFile() unexpected error: %v", err)
+			}
+
+			content, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatalf("failed to read test file: %v", err)
+			}
+
+			if string(content) != tt.want {
+				t.Fatalf("WriteVersionToFile() wrote %q, want %q", string(content), tt.want)
+			}
+		})
+	}
+}
+
+func TestWriteVersionToFile_Overwrite(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "VERSION")
+
+	// Write initial content
+	err := os.WriteFile(path, []byte("old content\n"), 0644)
+	if err != nil {
+		t.Fatalf("failed to write initial file: %v", err)
+	}
+
+	// Overwrite with version
+	v := Version{Major: 2, Minor: 0, Patch: 0}
+	err = WriteVersionToFile(path, v)
+	if err != nil {
+		t.Fatalf("WriteVersionToFile() unexpected error: %v", err)
+	}
+
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("failed to read test file: %v", err)
+	}
+
+	want := "2.0.0\n"
+	if string(content) != want {
+		t.Fatalf("WriteVersionToFile() wrote %q, want %q", string(content), want)
+	}
+}
+
+func TestShouldCreateTag(t *testing.T) {
+	tests := []struct {
+		name    string
+		version Version
+		want    bool
+	}{
+		{
+			name:    "release version",
+			version: Version{Major: 1, Minor: 0, Patch: 0},
+			want:    true,
+		},
+		{
+			name:    "unnumbered prerelease alpha",
+			version: Version{Major: 1, Minor: 0, Patch: 0, Prerelease: "alpha"},
+			want:    false,
+		},
+		{
+			name:    "unnumbered prerelease beta",
+			version: Version{Major: 1, Minor: 0, Patch: 0, Prerelease: "beta"},
+			want:    false,
+		},
+		{
+			name:    "unnumbered prerelease rc",
+			version: Version{Major: 1, Minor: 0, Patch: 0, Prerelease: "rc"},
+			want:    false,
+		},
+		{
+			name:    "numbered prerelease alpha.1",
+			version: Version{Major: 1, Minor: 0, Patch: 0, Prerelease: "alpha.1"},
+			want:    true,
+		},
+		{
+			name:    "numbered prerelease beta.2",
+			version: Version{Major: 1, Minor: 0, Patch: 0, Prerelease: "beta.2"},
+			want:    true,
+		},
+		{
+			name:    "numbered prerelease rc1",
+			version: Version{Major: 1, Minor: 0, Patch: 0, Prerelease: "rc1"},
+			want:    true,
+		},
+		{
+			name:    "numbered prerelease rc10",
+			version: Version{Major: 1, Minor: 0, Patch: 0, Prerelease: "rc10"},
+			want:    true,
+		},
+		{
+			name:    "zero version",
+			version: Version{Major: 0, Minor: 0, Patch: 0},
+			want:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.version.ShouldCreateTag()
+			if got != tt.want {
+				t.Fatalf("ShouldCreateTag() = %v, want %v", got, tt.want)
 			}
 		})
 	}
