@@ -178,6 +178,10 @@ Commands:
   pre <prerelease-id>         Update prerelease identifier (v2.0.0-alpha -> v2.0.0-beta)
   release                     Remove prerelease to create release (v2.0.0-rc1 -> v2.0.0)
 
+Version Source:
+  By default, the current version is read from git tags. Use -f or -file to read
+  from a file instead. When using file mode, both the file and git tag are updated.
+
 Flags:
 `,
 			progName,
