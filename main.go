@@ -59,6 +59,25 @@ func (v Version) Bump(level string) Version {
 	}
 }
 
+func (v Version) SetPrerelease(prereleaseID string) (Version, error) {
+	return ParseVersion(
+		Version{
+			Major:      v.Major,
+			Minor:      v.Minor,
+			Patch:      v.Patch,
+			Prerelease: prereleaseID,
+		}.String(),
+	)
+}
+
+func (v Version) ClearPrerelease() Version {
+	return Version{
+		Major: v.Major,
+		Minor: v.Minor,
+		Patch: v.Patch,
+	}
+}
+
 func (v Version) String() string {
 	if v.Prerelease != "" {
 		return fmt.Sprintf("v%d.%d.%d-%s", v.Major, v.Minor, v.Patch, v.Prerelease)
@@ -357,9 +376,7 @@ func main() {
 			)
 			os.Exit(1)
 		}
-		nextVersion = currentVersion.Bump(opMode)
-		nextVersion.Prerelease = prereleaseID
-		nextVersion, err = ParseVersion(nextVersion.String())
+		nextVersion, err = currentVersion.Bump(opMode).SetPrerelease(prereleaseID)
 		if err != nil {
 			fmt.Println("Pre-release identifier is not valid per semver spec.")
 			os.Exit(1)
@@ -371,9 +388,7 @@ func main() {
 			)
 			os.Exit(1)
 		}
-		nextVersion = currentVersion
-		nextVersion.Prerelease = prereleaseID
-		nextVersion, err = ParseVersion(nextVersion.String())
+		nextVersion, err = currentVersion.SetPrerelease(prereleaseID)
 		if err != nil {
 			fmt.Println("Pre-release identifier is not valid per semver spec.")
 			os.Exit(1)
@@ -386,8 +401,7 @@ func main() {
 			)
 			os.Exit(1)
 		}
-		nextVersion = currentVersion
-		nextVersion.Prerelease = ""
+		nextVersion = currentVersion.ClearPrerelease()
 	}
 
 	fmt.Printf("Will bump from %s to %s\n", currentVersion, nextVersion)
