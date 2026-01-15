@@ -14,8 +14,11 @@ go build
 ```
 
 ### Run tests
+
+The integration tests have an issue with the Go build cache. Use the `-count=1` option.
+
 ```bash
-go test -v ./...
+go test -v -count=1 ./...
 ```
 
 ### Install locally
