@@ -203,17 +203,17 @@ func printBashCompletion() {
     commands="init major minor patch pre-major pre-minor pre-patch pre release"
     flags="-v -version -n -dry-run -f -file -bash-completion"
 
-    if [[ ${prev} == "-file" ]]; then
-        COMPREPLY=( $(compgen -f -- ${cur}) )
+    if [[ "${prev}" == "-file" ]]; then
+        COMPREPLY=( $(compgen -f -- "${cur}") )
         return 0
     fi
 
-    if [[ ${cur} == -* ]]; then
-        COMPREPLY=( $(compgen -W "${flags}" -- ${cur}) )
+    if [[ "${cur}" == -* ]]; then
+        COMPREPLY=( $(compgen -W "${flags}" -- "${cur}") )
         return 0
     fi
 
-    COMPREPLY=( $(compgen -W "${commands}" -- ${cur}) )
+    COMPREPLY=( $(compgen -W "${commands}" -- "${cur}") )
     return 0
 }
 
