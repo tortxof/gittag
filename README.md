@@ -30,7 +30,7 @@ gittag <command> [prerelease-id]
 | `-f` | Read version from `VERSION` file instead of git tags |
 | `-file <path>` | Read version from specified file |
 | `-v`, `--version` | Print version info |
-| `-bash-completions` | Output bash completion script |
+| `-bash-completion` | Output bash completion script |
 
 ### Demo
 
@@ -108,12 +108,12 @@ Download from the [releases page](https://github.com/tortxof/gittag/releases).
 go install github.com/tortxof/gittag@latest
 ```
 
-## Shell Completions
+## Shell Completion
 
-To enable bash completions, add the following to your `~/.bashrc`:
+To enable bash completion, add the following to your `~/.bashrc`:
 
 ```bash
-eval "$(gittag -bash-completions)"
+eval "$(gittag -bash-completion)"
 ```
 
 Then restart your shell or run `source ~/.bashrc`. You'll get tab completion for commands and flags.
