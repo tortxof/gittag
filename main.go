@@ -193,6 +193,29 @@ func AddVersionTag(v Version) error {
 	return nil
 }
 
+func printBashCompletions() {
+	script := `_gittag() {
+    local cur prev commands flags
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+    commands="init major minor patch pre-major pre-minor pre-patch pre release"
+    flags="-v -version -n -dry-run -f -file -bash-completions"
+
+    if [[ ${cur} == -* ]]; then
+        COMPREPLY=( $(compgen -W "${flags}" -- ${cur}) )
+        return 0
+    fi
+
+    COMPREPLY=( $(compgen -W "${commands}" -- ${cur}) )
+    return 0
+}
+
+complete -F _gittag gittag`
+	fmt.Println(script)
+}
+
 func init() {
 	flag.Usage = func() {
 		progName := filepath.Base(os.Args[0])
@@ -258,8 +281,19 @@ func init() {
 	flag.StringVar(&versionFile, "file", "", "Read version from specified file")
 }
 
+var bashCompletions bool
+
+func init() {
+	flag.BoolVar(&bashCompletions, "bash-completions", false, "Output bash completion script")
+}
+
 func main() {
 	flag.Parse()
+
+	if bashCompletions {
+		printBashCompletions()
+		os.Exit(0)
+	}
 
 	if printVersion {
 		fmt.Println(version)
