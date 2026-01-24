@@ -70,45 +70,32 @@ Flags:
 	}
 }
 
-var printVersion bool
-
-func init() {
+func main() {
+	var printVersion bool
 	const (
 		defaultPrintVersion = false
-		usage               = "Print version info"
+		versionFlagUsage    = "Print version info"
 	)
-	flag.BoolVar(&printVersion, "version", defaultPrintVersion, usage)
-	flag.BoolVar(&printVersion, "v", defaultPrintVersion, usage)
-}
+	flag.BoolVar(&printVersion, "version", defaultPrintVersion, versionFlagUsage)
+	flag.BoolVar(&printVersion, "v", defaultPrintVersion, versionFlagUsage)
 
-var dryRun bool
-
-func init() {
+	var dryRun bool
 	const (
-		defaultDryRun = false
-		usage         = "Dry run"
+		defaultDryRun   = false
+		dryRunFlagUsage = "Dry run"
 	)
-	flag.BoolVar(&dryRun, "dry-run", defaultDryRun, usage)
-	flag.BoolVar(&dryRun, "n", defaultDryRun, usage)
-}
+	flag.BoolVar(&dryRun, "dry-run", defaultDryRun, dryRunFlagUsage)
+	flag.BoolVar(&dryRun, "n", defaultDryRun, dryRunFlagUsage)
 
-const defaultVersionFile = "VERSION"
-
-var useFile bool
-var versionFile string
-
-func init() {
+	const defaultVersionFile = "VERSION"
+	var useFile bool
+	var versionFile string
 	flag.BoolVar(&useFile, "f", false, fmt.Sprintf("Read version from file '%s'", defaultVersionFile))
 	flag.StringVar(&versionFile, "file", "", "Read version from specified file")
-}
 
-var bashCompletion bool
-
-func init() {
+	var bashCompletion bool
 	flag.BoolVar(&bashCompletion, "bash-completion", false, "Output bash completion script")
-}
 
-func main() {
 	flag.Parse()
 
 	if bashCompletion {
@@ -150,136 +137,23 @@ func main() {
 		os.Exit(1)
 	}
 
-	if opMode == Init {
-		if useFile {
-			_, err := os.Stat(versionFile)
-			if err == nil {
-				fmt.Println("Version file already exists. Cannot init.")
-				os.Exit(1)
-			} else if !os.IsNotExist(err) {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-		}
-		hasTag, err := HasTag()
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		if hasTag {
-			fmt.Println("Found a version tag. Cannot init.")
-			os.Exit(1)
-		}
-		initialVersion := Version{}
-		if useFile {
-			err := WriteVersionToFile(versionFile, initialVersion)
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-		}
-		err = AddVersionTag(initialVersion)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		return
+	options := Options{
+		OpMode:       opMode,
+		PrereleaseID: prereleaseID,
+		UseFile:      useFile,
+		VersionFile:  versionFile,
+		DryRun:       dryRun,
 	}
 
-	var currentTag string
-	var err error
-	if useFile {
-		currentTag, err = GetVersionFromFile(versionFile)
-		if err != nil {
-			fmt.Println("Could not read version file.")
-			fmt.Println(err)
-			os.Exit(1)
-		}
-	} else {
-		currentTag, err = GetCurrentTag()
-		if err != nil {
-			fmt.Println("Could not get current tag.")
-			fmt.Println(err)
-			os.Exit(1)
-		}
-	}
-
-	currentVersion, err := ParseVersion(currentTag)
-	if err != nil {
-		fmt.Println(err)
+	operation, ok := operations[opMode]
+	if !ok {
+		fmt.Printf("Unknown operation mode: %s\n", opMode)
+		flag.Usage()
 		os.Exit(1)
 	}
+	var err error
 
-	var nextVersion Version
-	switch opMode {
-	case Major, Minor, Patch:
-		if currentVersion.IsPrerelease() {
-			fmt.Println(
-				"Cannot bump version. Current version is pre-release." +
-					" Do 'release' first.",
-			)
-			os.Exit(1)
-		}
-		nextVersion = currentVersion.Bump(opMode)
-	case PreMajor, PreMinor, PrePatch:
-		if currentVersion.IsPrerelease() {
-			fmt.Println(
-				"Cannot bump to pre-release version." +
-					" Current version is already pre-release." +
-					" Use 'pre' to update pre-release version.",
-			)
-			os.Exit(1)
-		}
-		nextVersion, err = currentVersion.Bump(opMode).SetPrerelease(prereleaseID)
-		if err != nil {
-			fmt.Println("Pre-release identifier is not valid per semver spec.")
-			os.Exit(1)
-		}
-	case Pre:
-		if !currentVersion.IsPrerelease() {
-			fmt.Println("Cannot update pre-release identifier." +
-				" Current version is not pre-release.",
-			)
-			os.Exit(1)
-		}
-		nextVersion, err = currentVersion.SetPrerelease(prereleaseID)
-		if err != nil {
-			fmt.Println("Pre-release identifier is not valid per semver spec.")
-			os.Exit(1)
-		}
-	case Release:
-		if !currentVersion.IsPrerelease() {
-			fmt.Println(
-				"Cannot bump to release version." +
-					" Current version is not pre-release.",
-			)
-			os.Exit(1)
-		}
-		nextVersion = currentVersion.ClearPrerelease()
-	}
-
-	fmt.Printf("Will bump from %s to %s\n", currentVersion, nextVersion)
-	if useFile && !nextVersion.ShouldCreateTag() {
-		fmt.Println("No git tag will be created (prerelease without version number).")
-	}
-
-	if dryRun {
-		fmt.Println("Dry run. Doing nothing.")
-		os.Exit(0)
-	}
-
-	if useFile {
-		err := WriteVersionToFile(versionFile, nextVersion)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		if !nextVersion.ShouldCreateTag() {
-			return
-		}
-	}
-
-	err = AddVersionTag(nextVersion)
+	err = operation(options)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
