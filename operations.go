@@ -116,11 +116,7 @@ func DoInit(o Options) error {
 			return err
 		}
 	}
-	err = AddVersionTag(initialVersion)
-	if err != nil {
-		return err
-	}
-	return nil
+	return AddVersionTag(initialVersion)
 }
 
 func GetCurrentVersion(o Options) (Version, error) {
