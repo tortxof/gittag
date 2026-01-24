@@ -20,6 +20,7 @@ func GetCurrentTag() (string, error) {
 
 	return strings.TrimSpace(stdout.String()), nil
 }
+
 func HasTag() (bool, error) {
 	cmd := exec.Command("git", "tag", "--list")
 	var stdout, stderr bytes.Buffer
