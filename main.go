@@ -151,9 +151,8 @@ func main() {
 		flag.Usage()
 		os.Exit(1)
 	}
-	var err error
 
-	err = operation(options)
+	err := operation(options)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
