@@ -166,10 +166,5 @@ func ApplyVersion(currentVersion Version, nextVersion Version, o Options) error 
 		}
 	}
 
-	err := AddVersionTag(nextVersion)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return AddVersionTag(nextVersion)
 }
