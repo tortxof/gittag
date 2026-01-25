@@ -340,6 +340,29 @@ func TestIntegrationInvalidPrereleaseIdentifier(t *testing.T) {
 	}
 }
 
+func TestIntegrationDryRun(t *testing.T) {
+	dir := setupGitRepo(t, "v1.2.3")
+
+	output, err := runGittag(t, dir, "-n", "patch")
+	if err != nil {
+		t.Fatalf("gittag -n patch failed: %v", err)
+	}
+
+	// Check output shows what would happen
+	if !strings.Contains(output, "v1.2.3") || !strings.Contains(output, "v1.2.4") {
+		t.Fatalf("expected dry-run output to show version change, got: %s", output)
+	}
+	if !strings.Contains(output, "Dry run") {
+		t.Fatalf("expected dry-run output to mention dry run, got: %s", output)
+	}
+
+	// Check no new tag was created
+	tag := getLatestTag(t, dir)
+	if tag != "v1.2.3" {
+		t.Fatalf("expected tag to remain v1.2.3 after dry-run, got %s", tag)
+	}
+}
+
 // File-based version tests
 
 // setupGitRepoWithVersionFile creates a temp directory with an initialized git repo
