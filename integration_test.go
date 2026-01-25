@@ -894,3 +894,168 @@ func TestIntegrationFileInvalidContent(t *testing.T) {
 		t.Fatalf("expected error message about semver format, got: %s", output)
 	}
 }
+
+// getTaggedVersionFileContent returns the content of VERSION file at a specific tag
+func getTaggedVersionFileContent(t *testing.T, dir, tag string) string {
+	t.Helper()
+	cmd := exec.Command("git", "show", tag+":VERSION")
+	cmd.Dir = dir
+	output, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("failed to get VERSION content at tag %s: %v", tag, err)
+	}
+	return strings.TrimSpace(string(output))
+}
+
+func TestIntegrationFileRejectsStagedChanges(t *testing.T) {
+	dir := setupGitRepoWithVersionFile(t, "1.2.3")
+
+	// Stage a file but don't commit
+	testFile := filepath.Join(dir, "staged.txt")
+	if err := os.WriteFile(testFile, []byte("staged content"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, dir, "add", testFile)
+
+	output, err := runGittag(t, dir, "-f", "patch")
+	if err == nil {
+		t.Fatal("expected gittag to fail when staged changes exist")
+	}
+	if !strings.Contains(output, "staged changes") {
+		t.Fatalf("expected error about staged changes, got: %s", output)
+	}
+
+	// Verify VERSION file was not changed
+	version := getVersionFileContent(t, dir)
+	if version != "1.2.3" {
+		t.Fatalf("expected VERSION to remain 1.2.3, got %s", version)
+	}
+}
+
+func TestIntegrationFileRejectsVersionFileChanges(t *testing.T) {
+	dir := setupGitRepoWithVersionFile(t, "1.2.3")
+
+	// Modify the VERSION file but don't stage it (still a valid release version)
+	versionFile := filepath.Join(dir, "VERSION")
+	if err := os.WriteFile(versionFile, []byte("1.2.999\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	output, err := runGittag(t, dir, "-f", "patch")
+	if err == nil {
+		t.Fatal("expected gittag to fail when VERSION file has uncommitted changes")
+	}
+	if !strings.Contains(output, "VERSION") || !strings.Contains(output, "uncommitted changes") {
+		t.Fatalf("expected error about VERSION file having uncommitted changes, got: %s", output)
+	}
+}
+
+func TestIntegrationFileInitRejectsStagedChanges(t *testing.T) {
+	dir := setupGitRepoWithVersionFile(t, "") // No VERSION file
+
+	// Stage a file but don't commit
+	testFile := filepath.Join(dir, "staged.txt")
+	if err := os.WriteFile(testFile, []byte("staged content"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, dir, "add", testFile)
+
+	output, err := runGittag(t, dir, "-f", "init")
+	if err == nil {
+		t.Fatal("expected gittag -f init to fail when staged changes exist")
+	}
+	if !strings.Contains(output, "staged changes") {
+		t.Fatalf("expected error about staged changes, got: %s", output)
+	}
+}
+
+func TestIntegrationFileTagPointsToCorrectCommit(t *testing.T) {
+	dir := setupGitRepoWithVersionFile(t, "1.2.3")
+
+	_, err := runGittag(t, dir, "-f", "patch")
+	if err != nil {
+		t.Fatalf("gittag -f patch failed: %v", err)
+	}
+
+	// Verify the tag points to a commit where VERSION has the new version
+	tagContent := getTaggedVersionFileContent(t, dir, "v1.2.4")
+	if tagContent != "1.2.4" {
+		t.Fatalf("expected VERSION at v1.2.4 to contain 1.2.4, got %s", tagContent)
+	}
+}
+
+func TestIntegrationFileInitTagPointsToCorrectCommit(t *testing.T) {
+	dir := setupGitRepoWithVersionFile(t, "") // No VERSION file
+
+	_, err := runGittag(t, dir, "-f", "init")
+	if err != nil {
+		t.Fatalf("gittag -f init failed: %v", err)
+	}
+
+	// Verify the tag points to a commit where VERSION has the correct version
+	tagContent := getTaggedVersionFileContent(t, dir, "v0.0.0")
+	if tagContent != "0.0.0" {
+		t.Fatalf("expected VERSION at v0.0.0 to contain 0.0.0, got %s", tagContent)
+	}
+}
+
+func TestIntegrationFileCommitMessage(t *testing.T) {
+	dir := setupGitRepoWithVersionFile(t, "1.2.3")
+
+	_, err := runGittag(t, dir, "-f", "patch")
+	if err != nil {
+		t.Fatalf("gittag -f patch failed: %v", err)
+	}
+
+	// Get the commit message of the tagged commit
+	cmd := exec.Command("git", "log", "-1", "--format=%s", "v1.2.4")
+	cmd.Dir = dir
+	output, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("failed to get commit message: %v", err)
+	}
+	commitMsg := strings.TrimSpace(string(output))
+	if commitMsg != "Release v1.2.4" {
+		t.Fatalf("expected commit message 'Release v1.2.4', got %s", commitMsg)
+	}
+}
+
+func TestIntegrationFileDryRunWithTag(t *testing.T) {
+	dir := setupGitRepoWithVersionFile(t, "1.2.3")
+
+	output, err := runGittag(t, dir, "-f", "-n", "patch")
+	if err != nil {
+		t.Fatalf("gittag -f -n patch failed: %v", err)
+	}
+
+	// Check output mentions what would be committed and tagged
+	if !strings.Contains(output, "Would commit") || !strings.Contains(output, "v1.2.4") {
+		t.Fatalf("expected dry-run output to mention 'Would commit' and tag, got: %s", output)
+	}
+
+	// Check VERSION file was NOT updated
+	version := getVersionFileContent(t, dir)
+	if version != "1.2.3" {
+		t.Fatalf("expected VERSION file to remain 1.2.3 after dry-run, got %s", version)
+	}
+}
+
+func TestIntegrationFileInitDryRun(t *testing.T) {
+	dir := setupGitRepoWithVersionFile(t, "") // No VERSION file
+
+	output, err := runGittag(t, dir, "-f", "-n", "init")
+	if err != nil {
+		t.Fatalf("gittag -f -n init failed: %v", err)
+	}
+
+	// Check output mentions what would be committed and tagged
+	if !strings.Contains(output, "Would commit") || !strings.Contains(output, "v0.0.0") {
+		t.Fatalf("expected dry-run output to mention 'Would commit' and tag, got: %s", output)
+	}
+
+	// Check VERSION file was NOT created
+	versionFile := filepath.Join(dir, "VERSION")
+	if _, err := os.Stat(versionFile); err == nil {
+		t.Fatal("expected VERSION file to not exist after dry-run")
+	}
+}
