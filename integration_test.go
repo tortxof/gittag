@@ -1059,3 +1059,59 @@ func TestIntegrationFileInitDryRun(t *testing.T) {
 		t.Fatal("expected VERSION file to not exist after dry-run")
 	}
 }
+
+func TestIntegrationFileFromSubdirectory(t *testing.T) {
+	dir := setupGitRepoWithVersionFile(t, "1.2.3")
+
+	// Create a subdirectory
+	subdir := filepath.Join(dir, "subdir", "nested")
+	if err := os.MkdirAll(subdir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Run gittag from the subdirectory
+	_, err := runGittag(t, subdir, "-f", "patch")
+	if err != nil {
+		t.Fatalf("gittag -f patch from subdirectory failed: %v", err)
+	}
+
+	// Check VERSION file at repo root was updated
+	version := getVersionFileContent(t, dir)
+	if version != "1.2.4" {
+		t.Fatalf("expected VERSION file to contain 1.2.4, got %s", version)
+	}
+
+	// Check git tag was created
+	tag := getLatestTag(t, dir)
+	if tag != "v1.2.4" {
+		t.Fatalf("expected v1.2.4 tag, got %s", tag)
+	}
+}
+
+func TestIntegrationFileInitFromSubdirectory(t *testing.T) {
+	dir := setupGitRepoWithVersionFile(t, "") // No VERSION file
+
+	// Create a subdirectory
+	subdir := filepath.Join(dir, "subdir", "nested")
+	if err := os.MkdirAll(subdir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Run gittag init from the subdirectory
+	_, err := runGittag(t, subdir, "-f", "init")
+	if err != nil {
+		t.Fatalf("gittag -f init from subdirectory failed: %v", err)
+	}
+
+	// Check VERSION file was created at repo root
+	version := getVersionFileContent(t, dir)
+	if version != "0.0.0" {
+		t.Fatalf("expected VERSION file to contain 0.0.0, got %s", version)
+	}
+
+	// Check git tag was created
+	tag := getLatestTag(t, dir)
+	if tag != "v0.0.0" {
+		t.Fatalf("expected v0.0.0 tag, got %s", tag)
+	}
+}

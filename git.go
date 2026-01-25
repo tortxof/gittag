@@ -108,3 +108,15 @@ func CreateCommit(message string) error {
 	}
 	return nil
 }
+
+func GetRepoRoot() (string, error) {
+	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if err != nil {
+		return "", fmt.Errorf("git: %s", &stderr)
+	}
+	return strings.TrimSpace(stdout.String()), nil
+}

@@ -118,7 +118,12 @@ func main() {
 		useFile = true
 	}
 	if useFile && versionFile == "" {
-		versionFile = defaultVersionFile
+		repoRoot, err := GetRepoRoot()
+		if err != nil {
+			fmt.Printf("Could not determine git repository root: %v\n", err)
+			os.Exit(1)
+		}
+		versionFile = filepath.Join(repoRoot, defaultVersionFile)
 	}
 
 	var opMode, prereleaseID string
