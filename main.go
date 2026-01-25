@@ -57,10 +57,11 @@ Commands:
 
 Version Source:
   By default, the current version is read from git tags. Use -f or -file to read
-  from a file instead. When using file mode, the file is always updated, but git
-  tags are only created for release versions and numbered prereleases (e.g.,
-  alpha.1, rc1). Unnumbered prereleases (e.g., alpha, beta) do not create git
-  tags.
+  from a file instead. When using file mode, the file is updated and committed
+  before creating the git tag (ensuring the tag points to the correct version).
+  Git tags are only created for release versions and numbered prereleases (e.g.,
+  alpha.1, rc1). Unnumbered prereleases (e.g., alpha, beta) only update the
+  file.
 
 Flags:
 `,
@@ -117,7 +118,12 @@ func main() {
 		useFile = true
 	}
 	if useFile && versionFile == "" {
-		versionFile = defaultVersionFile
+		repoRoot, err := GetRepoRoot()
+		if err != nil {
+			fmt.Printf("Could not determine git repository root: %v\n", err)
+			os.Exit(1)
+		}
+		versionFile = filepath.Join(repoRoot, defaultVersionFile)
 	}
 
 	var opMode, prereleaseID string

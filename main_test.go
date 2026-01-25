@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -33,6 +34,24 @@ func TestVersionBump(t *testing.T) {
 			start: Version{Major: 2, Minor: 3, Patch: 4},
 			level: Major,
 			want:  Version{Major: 3, Minor: 0, Patch: 0},
+		},
+		{
+			name:  "pre-major",
+			start: Version{Major: 1, Minor: 2, Patch: 3},
+			level: PreMajor,
+			want:  Version{Major: 2, Minor: 0, Patch: 0},
+		},
+		{
+			name:  "pre-minor",
+			start: Version{Major: 1, Minor: 2, Patch: 3},
+			level: PreMinor,
+			want:  Version{Major: 1, Minor: 3, Patch: 0},
+		},
+		{
+			name:  "pre-patch",
+			start: Version{Major: 1, Minor: 2, Patch: 3},
+			level: PrePatch,
+			want:  Version{Major: 1, Minor: 2, Patch: 4},
 		},
 		{
 			name:     "invalid level panics",
@@ -348,6 +367,66 @@ func TestWriteVersionToFile_Overwrite(t *testing.T) {
 	want := "2.0.0\n"
 	if string(content) != want {
 		t.Fatalf("WriteVersionToFile() wrote %q, want %q", string(content), want)
+	}
+}
+
+func TestGetRepoRoot(t *testing.T) {
+	dir := t.TempDir()
+
+	// Initialize git repo
+	cmd := exec.Command("git", "init")
+	cmd.Dir = dir
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("git init failed: %v", err)
+	}
+
+	// Create a subdirectory
+	subdir := filepath.Join(dir, "subdir", "nested")
+	if err := os.MkdirAll(subdir, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+
+	// Save current working directory
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd failed: %v", err)
+	}
+	defer os.Chdir(origDir)
+
+	// Change to subdirectory and call GetRepoRoot
+	if err := os.Chdir(subdir); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+
+	root, err := GetRepoRoot()
+	if err != nil {
+		t.Fatalf("GetRepoRoot() unexpected error: %v", err)
+	}
+
+	// The returned root should match the original dir (normalized)
+	if root != dir {
+		t.Fatalf("GetRepoRoot() = %q, want %q", root, dir)
+	}
+}
+
+func TestGetRepoRoot_NotGitRepo(t *testing.T) {
+	dir := t.TempDir()
+
+	// Save current working directory
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd failed: %v", err)
+	}
+	defer os.Chdir(origDir)
+
+	// Change to non-git directory
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+
+	_, err = GetRepoRoot()
+	if err == nil {
+		t.Fatal("GetRepoRoot() expected error for non-git directory")
 	}
 }
 

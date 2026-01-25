@@ -101,6 +101,13 @@ func DoInit(o Options) error {
 		} else if !os.IsNotExist(err) {
 			return err
 		}
+		hasStagedChanges, err := HasStagedChanges()
+		if err != nil {
+			return err
+		}
+		if hasStagedChanges {
+			return fmt.Errorf("Cannot init: there are staged changes. Commit or stash them first.")
+		}
 	}
 	hasTag, err := HasTag()
 	if err != nil {
@@ -110,11 +117,20 @@ func DoInit(o Options) error {
 		return fmt.Errorf("Found a version tag. Cannot init.")
 	}
 	initialVersion := Version{}
+	if o.DryRun {
+		fmt.Printf("Will init %s\n", initialVersion)
+		fmt.Println("Dry run. Doing nothing.")
+		if o.UseFile {
+			fmt.Printf("Would commit %s and tag %s\n", o.VersionFile, initialVersion)
+		}
+		return nil
+	}
 	if o.UseFile {
-		err := WriteVersionToFile(o.VersionFile, initialVersion)
+		err = WriteVersionToFile(o.VersionFile, initialVersion)
 		if err != nil {
 			return err
 		}
+		return CommitAndTag(o.VersionFile, initialVersion)
 	}
 	return AddVersionTag(initialVersion)
 }
@@ -143,16 +159,25 @@ func GetCurrentVersion(o Options) (Version, error) {
 
 func ApplyVersion(currentVersion Version, nextVersion Version, o Options) error {
 	fmt.Printf("Will bump from %s to %s\n", currentVersion, nextVersion)
+
+	if o.DryRun {
+		fmt.Println("Dry run. Doing nothing.")
+		if o.UseFile && nextVersion.ShouldCreateTag() {
+			fmt.Printf("Would commit %s and tag %s\n", o.VersionFile, nextVersion)
+		}
+		return nil
+	}
+
 	if o.UseFile && !nextVersion.ShouldCreateTag() {
 		fmt.Println("No git tag will be created (prerelease without version number).")
 	}
 
-	if o.DryRun {
-		fmt.Println("Dry run. Doing nothing.")
-		return nil
-	}
-
 	if o.UseFile {
+		if nextVersion.ShouldCreateTag() {
+			if err := ValidateGitStateForFileMode(o.VersionFile); err != nil {
+				return err
+			}
+		}
 		err := WriteVersionToFile(o.VersionFile, nextVersion)
 		if err != nil {
 			return err
@@ -160,7 +185,41 @@ func ApplyVersion(currentVersion Version, nextVersion Version, o Options) error 
 		if !nextVersion.ShouldCreateTag() {
 			return nil
 		}
+		return CommitAndTag(o.VersionFile, nextVersion)
 	}
 
 	return AddVersionTag(nextVersion)
+}
+
+// ValidateGitStateForFileMode checks git state before file mode operations
+func ValidateGitStateForFileMode(versionFile string) error {
+	hasStagedChanges, err := HasStagedChanges()
+	if err != nil {
+		return err
+	}
+	if hasStagedChanges {
+		return fmt.Errorf("Cannot proceed: there are staged changes. Commit or stash them first.")
+	}
+
+	hasFileChanges, err := HasFileChanges(versionFile)
+	if err != nil {
+		return err
+	}
+	if hasFileChanges {
+		return fmt.Errorf("Cannot proceed: %s has uncommitted changes. Commit or stash them first.", versionFile)
+	}
+
+	return nil
+}
+
+// CommitAndTag stages the version file, commits it, and creates a tag
+func CommitAndTag(versionFile string, v Version) error {
+	if err := StageFile(versionFile); err != nil {
+		return err
+	}
+	commitMsg := fmt.Sprintf("Release %s", v)
+	if err := CreateCommit(commitMsg); err != nil {
+		return err
+	}
+	return AddVersionTag(v)
 }
