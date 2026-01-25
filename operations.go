@@ -101,6 +101,13 @@ func DoInit(o Options) error {
 		} else if !os.IsNotExist(err) {
 			return err
 		}
+		hasStagedChanges, err := HasStagedChanges()
+		if err != nil {
+			return err
+		}
+		if hasStagedChanges {
+			return fmt.Errorf("Cannot init: there are staged changes. Commit or stash them first.")
+		}
 	}
 	hasTag, err := HasTag()
 	if err != nil {
@@ -119,13 +126,6 @@ func DoInit(o Options) error {
 		return nil
 	}
 	if o.UseFile {
-		hasStagedChanges, err := HasStagedChanges()
-		if err != nil {
-			return err
-		}
-		if hasStagedChanges {
-			return fmt.Errorf("Cannot init: there are staged changes. Commit or stash them first.")
-		}
 		err = WriteVersionToFile(o.VersionFile, initialVersion)
 		if err != nil {
 			return err
