@@ -36,6 +36,24 @@ func TestVersionBump(t *testing.T) {
 			want:  Version{Major: 3, Minor: 0, Patch: 0},
 		},
 		{
+			name:  "pre-major",
+			start: Version{Major: 1, Minor: 2, Patch: 3},
+			level: PreMajor,
+			want:  Version{Major: 2, Minor: 0, Patch: 0},
+		},
+		{
+			name:  "pre-minor",
+			start: Version{Major: 1, Minor: 2, Patch: 3},
+			level: PreMinor,
+			want:  Version{Major: 1, Minor: 3, Patch: 0},
+		},
+		{
+			name:  "pre-patch",
+			start: Version{Major: 1, Minor: 2, Patch: 3},
+			level: PrePatch,
+			want:  Version{Major: 1, Minor: 2, Patch: 4},
+		},
+		{
 			name:     "invalid level panics",
 			start:    Version{Major: 0, Minor: 0, Patch: 0},
 			level:    "invalid",
