@@ -65,6 +65,8 @@ gittag -f patch            # Updates VERSION file and creates git tag
 gittag -file VERSION.txt patch  # Use a custom filename
 ```
 
+When using `-f`, the VERSION file is always placed at the repository root, regardless of which subdirectory you run gittag from. When using `-file` with a custom path, you control the location.
+
 **Conditional tagging:** In file mode, git tags are only created for release versions and numbered prereleases. Unnumbered prereleases update only the file, not git tags. This allows prereleases like `alpha` or `beta` to represent a development phase spanning multiple commits, while numbered prereleases like `alpha.1` or `rc1` mark specific snapshots.
 
 ```bash
