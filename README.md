@@ -59,6 +59,16 @@ gittag release             # v1.3.0-beta.1 → v1.3.0
 
 Use `-f` or `-file` to track the version in a file instead of relying solely on git tags. This is useful when you want a `VERSION` file in your repository that other tools can read.
 
+#### Commit Messages
+
+When using file mode, gittag creates commits with the following messages:
+
+- **Release versions** (e.g., `patch`, `minor`, `major`, `release`): `Release vX.Y.Z`
+- **Unnumbered prereleases** (e.g., `pre-minor alpha`, `pre beta`): `Bump vX.Y.Z-alpha`
+- **Init**: `Release v0.0.0`
+
+Git tags are only created for release versions and numbered prereleases (e.g., `alpha.1`, `rc1`). Unnumbered prereleases create a commit but not a git tag.
+
 ```bash
 gittag -f init             # Creates VERSION file with 0.0.0 and v0.0.0 tag
 gittag -f patch            # Updates VERSION file and creates git tag
