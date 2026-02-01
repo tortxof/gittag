@@ -130,7 +130,14 @@ func DoInit(o Options) error {
 		if err != nil {
 			return err
 		}
-		return CommitAndTag(o.VersionFile, initialVersion)
+		if err := StageFile(o.VersionFile); err != nil {
+			return err
+		}
+		commitMsg := fmt.Sprintf("Release %s", initialVersion)
+		if err := CreateCommit(commitMsg); err != nil {
+			return err
+		}
+		return AddVersionTag(initialVersion)
 	}
 	return AddVersionTag(initialVersion)
 }
@@ -162,30 +169,39 @@ func ApplyVersion(currentVersion Version, nextVersion Version, o Options) error 
 
 	if o.DryRun {
 		fmt.Println("Dry run. Doing nothing.")
-		if o.UseFile && nextVersion.ShouldCreateTag() {
-			fmt.Printf("Would commit %s and tag %s\n", o.VersionFile, nextVersion)
+		if o.UseFile {
+			if nextVersion.ShouldCreateTag() {
+				fmt.Printf("Would commit %s and tag %s\n", o.VersionFile, nextVersion)
+			} else {
+				fmt.Printf("Would commit %s (no tag for unnumbered prerelease)\n", o.VersionFile)
+			}
 		}
 		return nil
 	}
 
-	if o.UseFile && !nextVersion.ShouldCreateTag() {
-		fmt.Println("No git tag will be created (prerelease without version number).")
-	}
-
 	if o.UseFile {
-		if nextVersion.ShouldCreateTag() {
-			if err := ValidateGitStateForFileMode(o.VersionFile); err != nil {
-				return err
-			}
+		if err := ValidateGitStateForFileMode(o.VersionFile); err != nil {
+			return err
 		}
 		err := WriteVersionToFile(o.VersionFile, nextVersion)
 		if err != nil {
 			return err
 		}
-		if !nextVersion.ShouldCreateTag() {
-			return nil
+		if err := StageFile(o.VersionFile); err != nil {
+			return err
 		}
-		return CommitAndTag(o.VersionFile, nextVersion)
+		commitMsg := fmt.Sprintf("Release %s", nextVersion)
+		if !nextVersion.ShouldCreateTag() {
+			fmt.Println("No git tag will be created (prerelease without version number).")
+			commitMsg = fmt.Sprintf("Bump %s", nextVersion)
+		}
+		if err := CreateCommit(commitMsg); err != nil {
+			return err
+		}
+		if nextVersion.ShouldCreateTag() {
+			return AddVersionTag(nextVersion)
+		}
+		return nil
 	}
 
 	return AddVersionTag(nextVersion)
@@ -210,16 +226,4 @@ func ValidateGitStateForFileMode(versionFile string) error {
 	}
 
 	return nil
-}
-
-// CommitAndTag stages the version file, commits it, and creates a tag
-func CommitAndTag(versionFile string, v Version) error {
-	if err := StageFile(versionFile); err != nil {
-		return err
-	}
-	commitMsg := fmt.Sprintf("Release %s", v)
-	if err := CreateCommit(commitMsg); err != nil {
-		return err
-	}
-	return AddVersionTag(v)
 }

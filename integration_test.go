@@ -696,6 +696,24 @@ func TestIntegrationFilePreMinorNoTag(t *testing.T) {
 	if tag != "v1.2.3" {
 		t.Fatalf("expected tag to remain v1.2.3 (no new tag), got %s", tag)
 	}
+
+	// Check the commit was made with correct message
+	cmd := exec.Command("git", "log", "-1", "--format=%s")
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("failed to get commit message: %v", err)
+	}
+	commitMsg := strings.TrimSpace(string(out))
+	if commitMsg != "Bump v1.3.0-alpha" {
+		t.Fatalf("expected commit message 'Bump v1.3.0-alpha', got '%s'", commitMsg)
+	}
+
+	// Verify VERSION file at HEAD has the correct version
+	headVersion := getVersionFileContent(t, dir)
+	if headVersion != "1.3.0-alpha" {
+		t.Fatalf("expected VERSION at HEAD to contain 1.3.0-alpha, got %s", headVersion)
+	}
 }
 
 // Test that numbered prerelease DOES create a git tag
@@ -770,6 +788,18 @@ func TestIntegrationFilePreUnnumberedNoTag(t *testing.T) {
 	tag := getLatestTag(t, dir)
 	if tag != "v1.3.0-alpha.1" {
 		t.Fatalf("expected tag to remain v1.3.0-alpha.1 (no new tag), got %s", tag)
+	}
+
+	// Check the commit was made with correct message
+	cmd := exec.Command("git", "log", "-1", "--format=%s")
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("failed to get commit message: %v", err)
+	}
+	commitMsg := strings.TrimSpace(string(out))
+	if commitMsg != "Bump v1.3.0-beta" {
+		t.Fatalf("expected commit message 'Bump v1.3.0-beta', got '%s'", commitMsg)
 	}
 }
 
@@ -1113,5 +1143,80 @@ func TestIntegrationFileInitFromSubdirectory(t *testing.T) {
 	tag := getLatestTag(t, dir)
 	if tag != "v0.0.0" {
 		t.Fatalf("expected v0.0.0 tag, got %s", tag)
+	}
+}
+
+// Test dry-run with unnumbered prerelease
+func TestIntegrationFileDryRunUnnumberedPre(t *testing.T) {
+	dir := setupGitRepoWithVersionFile(t, "1.2.3")
+
+	output, err := runGittag(t, dir, "-f", "-n", "pre-minor", "alpha")
+	if err != nil {
+		t.Fatalf("gittag -f -n pre-minor failed: %v", err)
+	}
+
+	// Check output shows what would happen - should mention commit but not tag
+	if !strings.Contains(output, "v1.2.3") || !strings.Contains(output, "v1.3.0-alpha") {
+		t.Fatalf("expected dry-run output to show version change, got: %s", output)
+	}
+	if !strings.Contains(output, "Would commit") || !strings.Contains(output, "no tag") {
+		t.Fatalf("expected dry-run output to mention commit without tag, got: %s", output)
+	}
+
+	// Check VERSION file was NOT updated
+	version := getVersionFileContent(t, dir)
+	if version != "1.2.3" {
+		t.Fatalf("expected VERSION file to remain 1.2.3 after dry-run, got %s", version)
+	}
+
+	// Check no new tag was created
+	tag := getLatestTag(t, dir)
+	if tag != "v1.2.3" {
+		t.Fatalf("expected tag to remain v1.2.3 after dry-run, got %s", tag)
+	}
+}
+
+// Test that unnumbered prerelease rejects staged changes
+func TestIntegrationFilePreUnnumberedRejectsStagedChanges(t *testing.T) {
+	dir := setupGitRepoWithVersionFile(t, "1.2.3")
+
+	// Stage a file but don't commit
+	testFile := filepath.Join(dir, "staged.txt")
+	if err := os.WriteFile(testFile, []byte("staged content"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, dir, "add", testFile)
+
+	output, err := runGittag(t, dir, "-f", "pre-minor", "alpha")
+	if err == nil {
+		t.Fatal("expected gittag to fail when staged changes exist")
+	}
+	if !strings.Contains(output, "staged changes") {
+		t.Fatalf("expected error about staged changes, got: %s", output)
+	}
+
+	// Verify VERSION file was not changed
+	version := getVersionFileContent(t, dir)
+	if version != "1.2.3" {
+		t.Fatalf("expected VERSION to remain 1.2.3, got %s", version)
+	}
+}
+
+// Test that unnumbered prerelease rejects uncommitted VERSION file changes
+func TestIntegrationFilePreUnnumberedRejectsVersionFileChanges(t *testing.T) {
+	dir := setupGitRepoWithVersionFile(t, "1.2.3")
+
+	// Modify the VERSION file but don't stage it
+	versionFile := filepath.Join(dir, "VERSION")
+	if err := os.WriteFile(versionFile, []byte("1.2.999\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	output, err := runGittag(t, dir, "-f", "pre-minor", "alpha")
+	if err == nil {
+		t.Fatal("expected gittag to fail when VERSION file has uncommitted changes")
+	}
+	if !strings.Contains(output, "VERSION") || !strings.Contains(output, "uncommitted changes") {
+		t.Fatalf("expected error about VERSION file having uncommitted changes, got: %s", output)
 	}
 }
