@@ -64,6 +64,7 @@ Use `-f` or `-file` to track the version in a file instead of relying solely on 
 When using file mode, gittag creates commits with the following messages:
 
 - **Release versions** (e.g., `patch`, `minor`, `major`, `release`): `Release vX.Y.Z`
+- **Numbered prereleases** (e.g., `pre-minor alpha.1`, `pre alpha.2`): `Release vX.Y.Z-alpha.1`
 - **Unnumbered prereleases** (e.g., `pre-minor alpha`, `pre beta`): `Bump vX.Y.Z-alpha`
 - **Init**: `Release v0.0.0`
 
