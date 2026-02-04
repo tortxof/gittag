@@ -126,8 +126,7 @@ func DoInit(o Options) error {
 		return nil
 	}
 	if o.UseFile {
-		err = WriteVersionToFile(o.VersionFile, initialVersion)
-		if err != nil {
+		if err := WriteVersionToFile(o.VersionFile, initialVersion); err != nil {
 			return err
 		}
 		if err := StageFile(o.VersionFile); err != nil {
@@ -137,7 +136,6 @@ func DoInit(o Options) error {
 		if err := CreateCommit(commitMsg); err != nil {
 			return err
 		}
-		return AddVersionTag(initialVersion)
 	}
 	return AddVersionTag(initialVersion)
 }
@@ -183,8 +181,7 @@ func ApplyVersion(currentVersion Version, nextVersion Version, o Options) error 
 		if err := ValidateGitStateForFileMode(o.VersionFile); err != nil {
 			return err
 		}
-		err := WriteVersionToFile(o.VersionFile, nextVersion)
-		if err != nil {
+		if err := WriteVersionToFile(o.VersionFile, nextVersion); err != nil {
 			return err
 		}
 		if err := StageFile(o.VersionFile); err != nil {
