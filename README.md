@@ -59,6 +59,17 @@ gittag release             # v1.3.0-beta.1 → v1.3.0
 
 Use `-f` or `-file` to track the version in a file instead of relying solely on git tags. This is useful when you want a `VERSION` file in your repository that other tools can read.
 
+#### Commit Messages
+
+When using file mode, gittag creates commits with the following messages:
+
+- **Release versions** (e.g., `patch`, `minor`, `major`, `release`): `Release vX.Y.Z`
+- **Numbered prereleases** (e.g., `pre-minor alpha.1`, `pre alpha.2`): `Release vX.Y.Z-alpha.1`
+- **Unnumbered prereleases** (e.g., `pre-minor alpha`, `pre beta`): `Bump vX.Y.Z-alpha`
+- **Init**: `Release v0.0.0`
+
+Git tags are only created for release versions and numbered prereleases (e.g., `alpha.1`, `rc1`). Unnumbered prereleases create a commit but not a git tag.
+
 ```bash
 gittag -f init             # Creates VERSION file with 0.0.0 and v0.0.0 tag
 gittag -f patch            # Updates VERSION file and creates git tag
@@ -67,7 +78,7 @@ gittag -file VERSION.txt patch  # Use a custom filename
 
 When using `-f`, the VERSION file is always placed at the repository root, regardless of which subdirectory you run gittag from. When using `-file` with a custom path, you control the location.
 
-**Conditional tagging:** In file mode, git tags are only created for release versions and numbered prereleases. Unnumbered prereleases update only the file, not git tags. This allows prereleases like `alpha` or `beta` to represent a development phase spanning multiple commits, while numbered prereleases like `alpha.1` or `rc1` mark specific snapshots.
+**Conditional tagging and commits:** In file mode, git tags are only created for release versions and numbered prereleases. Unnumbered prereleases create a commit but not a git tag. This allows prereleases like `alpha` or `beta` to represent a development phase spanning multiple commits, while numbered prereleases like `alpha.1` or `rc1` mark specific snapshots. All file mode operations require a clean git state (no staged or uncommitted changes).
 
 ```bash
 # Starting from VERSION containing 3.4.0
